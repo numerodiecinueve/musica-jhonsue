@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#16161a">
+<link rel="preconnect" href="https://www.youtube.com">
+<link rel="preconnect" href="https://i.ytimg.com" crossorigin>
+<link rel="dns-prefetch" href="https://img.youtube.com">
+<link rel="dns-prefetch" href="https://lrclib.net">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -417,8 +421,9 @@ function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');cle
 function lens(s){const b=s.querySelector('button.on'),i=s.querySelector('i');if(!i)return;if(!b||!b.offsetWidth){i.style.opacity=0;return}i.style.opacity=1;i.style.width=b.offsetWidth+'px';i.style.height=b.offsetHeight+'px';i.style.transform=`translate(${b.offsetLeft-4}px,${b.offsetTop-4}px)`}
 function segOn(s,b){s.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));lens(s)}
 const lensAll=()=>$$('.seg').forEach(lens);
+const qc={};const $c=s=>qc[s]||(qc[s]=$$(s));
 addEventListener('resize',lensAll);
-document.addEventListener('pointermove',e=>{const g=e.target.closest&&e.target.closest('.glass');if(g){const r=g.getBoundingClientRect();g.style.setProperty('--mx',e.clientX-r.left+'px');g.style.setProperty('--my',e.clientY-r.top+'px')}});
+let pmq=0;document.addEventListener('pointermove',e=>{if(pmq)return;pmq=1;const t=e.target,x=e.clientX,y=e.clientY;requestAnimationFrame(()=>{pmq=0;const g=t.closest&&t.closest('.glass');if(g){const r=g.getBoundingClientRect();g.style.setProperty('--mx',x-r.left+'px');g.style.setProperty('--my',y-r.top+'px')}})},{passive:true});
 
 /* ---------- reproductor de YouTube ---------- */
 function initPlayer(){
@@ -443,8 +448,9 @@ function onState(e){
 function tick(){
   if(!ready||!player.getDuration)return;
   const rt=player.getCurrentTime(),t=rt+lofs,d=player.getDuration()||0,w=(d?rt/d*100:0)+'%';
-  if(!seeking)$$('.pbar .pfill').forEach(e=>e.style.width=w);
-  $$('.tcur').forEach(e=>e.textContent=fmt(rt));$$('.trem').forEach(e=>e.textContent='-'+fmt(d-rt));if(d&&navigator.mediaSession&&Date.now()-lastPos>1000){lastPos=Date.now();try{navigator.mediaSession.setPositionState({duration:d,position:Math.min(rt,d),playbackRate:1})}catch(e){}}
+  if(document.hidden){if(navigator.mediaSession&&d&&Date.now()-lastPos>1000){lastPos=Date.now();try{navigator.mediaSession.setPositionState({duration:d,position:Math.min(rt,d),playbackRate:1})}catch(e){}}return}
+  if(!seeking)$c('.pbar .pfill').forEach(e=>e.style.width=w);
+  const ft=fmt(rt),fr='-'+fmt(d-rt);$c('.tcur').forEach(e=>{if(e.textContent!==ft)e.textContent=ft});$c('.trem').forEach(e=>{if(e.textContent!==fr)e.textContent=fr});if(d&&navigator.mediaSession&&Date.now()-lastPos>1000){lastPos=Date.now();try{navigator.mediaSession.setPositionState({duration:d,position:Math.min(rt,d),playbackRate:1})}catch(e){}}
   if(!synced)return;
   let i=-1;for(let k=0;k<lines.length;k++){if(lines[k].t<=t+.15)i=k;else break}
   if(i!==active){active=i;highlight()}
@@ -548,7 +554,7 @@ function rows(el,list){
   list.forEach((it,i)=>{
     const m=cleanMeta(it.title,it.author),d=document.createElement('div');
     d.className='row'+(it.id===curId?' cur':'');d.style.setProperty('--i',Math.min(i,12));
-    d.innerHTML=`<img loading="lazy" alt="" src="https://img.youtube.com/vi/${it.id}/mqdefault.jpg"><div class="tx"><div class="tt"></div><div class="ch"></div></div><button class="star${isFav(it.id)?' on':''}" title="Favorito"><svg><use href="#i-star"/></svg></button>`;
+    d.innerHTML=`<img loading="lazy" decoding="async" alt="" src="https://img.youtube.com/vi/${it.id}/mqdefault.jpg"><div class="tx"><div class="tt"></div><div class="ch"></div></div><button class="star${isFav(it.id)?' on':''}" title="Favorito"><svg><use href="#i-star"/></svg></button>`;
     d.querySelector('.tt').textContent=m.song;d.querySelector('.ch').textContent=m.art2+(it.cc?' · Creative Commons':'');
     d.querySelector('.star').onclick=ev=>{ev.stopPropagation();toggleFav(it);ev.currentTarget.classList.toggle('on',isFav(it.id))};
     d.onclick=()=>{queue=list.slice();playTrack(i)};
@@ -649,7 +655,7 @@ async function searchMusic(q){
   throw new Error('nokey');
 }
 function hint(el,t){el.innerHTML='';const d=document.createElement('div');d.className='hint';d.textContent=t;el.appendChild(d)}
-let sTimer,sSeq=0;
+let sTimer,sSeq=0;const sCache=new Map();
 async function doSearch(){
   const q=$('sq').value.trim(),r=$('res');
   if(!q){r.innerHTML='';return}
@@ -658,7 +664,8 @@ async function doSearch(){
   const my=++sSeq;
   r.innerHTML=Array.from({length:6},()=>'<div class="row sk"><div class="bl" style="width:54px;height:54px"></div><div class="tx"><div class="bl" style="height:14px;width:70%"></div><div class="bl" style="height:11px;width:40%;margin-top:8px"></div></div></div>').join('');
   try{
-    const res=(await searchMusic(q)).filter(x=>/^[\w-]{11}$/.test(x.id||''));
+    const ck=sMode+'|'+(freeMode?1:0)+'|'+q.toLowerCase();let res=sCache.get(ck);
+    if(!res){res=(await searchMusic(q)).filter(x=>/^[\w-]{11}$/.test(x.id||''));if(res.length){sCache.set(ck,res);if(sCache.size>40)sCache.delete(sCache.keys().next().value)}}
     if(my!==sSeq)return;
     res.length?rows(r,res):hint(r,'No encontré resultados. Prueba con otras palabras.');
   }catch(e){
