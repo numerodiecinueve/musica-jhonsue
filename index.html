@@ -369,7 +369,7 @@ body.cvm.np #bar{opacity:0;pointer-events:none}
   </div>
   <div id="ltools" class="glass"><button id="tFont" title="Fuente de la letra">Aa</button><button id="tTr" title="Traducción y pronunciación">文A</button><button id="tM" title="Retrasar letra">−</button><button id="tP" title="Adelantar letra">+</button><div id="fMenu" class="glass"></div></div>
   <div class="np-left">
-    <div id="stage"><div id="cover"></div><div id="yt"><div id="ytp"></div></div><button id="qBtn" class="glass" title="Calidad">HD</button><div id="qMenu" class="glass"></div>
+    <div id="stage"><div id="cover"></div><div id="yt"><div id="ytp"></div></div><button id="qBtn" class="glass" title="Calidad">Auto</button><div id="qMenu" class="glass"></div>
       <div id="vov"><div class="vmid"><button id="vBack">−10</button><button class="b-play" id="vPlay"><svg><use href="#i-play"/></svg></button><button id="vFwd">+10</button></div>
         <div class="vbot"><span class="tcur">0:00</span><div class="pbar"><i class="pfill"></i></div><span class="trem">-0:00</span><button id="vOri" title="Horizontal / vertical" style="font-size:11px;font-weight:800">16:9</button><button id="vFs" title="Pantalla completa"><svg><use href="#i-fs"/></svg></button></div></div></div>
     <div class="np-meta"><div class="tx"><div class="tt mTitle">—</div><div class="ch mArtist">—</div></div><button class="star" id="npStar" title="Favorito"><svg><use href="#i-star"/></svg></button><button class="star" id="npShare" title="Compartir"><svg><use href="#i-share"/></svg></button></div>
@@ -475,9 +475,11 @@ $$('.pbar').forEach(b=>drag(b,v=>{seeking=true;b.firstElementChild.style.width=v
 $$('.vb').forEach(b=>drag(b,v=>{$$('.vb .pfill').forEach(f=>f.style.width=v*100+'%');ready&&player.setVolume(v*100)}));
 /* ---------- calidad de video (máxima por defecto) ---------- */
 const QN={highres:'Máxima',hd2880:'2880p',hd2160:'4K 2160p',hd1440:'1440p',hd1080:'1080p',hd720:'720p',large:'480p',medium:'360p',small:'240p',tiny:'144p',auto:'Auto'};
-let userQ='';
-const loadId=id=>player.loadVideoById({videoId:id,suggestedQuality:'highres'});
-const qLabel=q=>{$('qBtn').textContent=QN[q]||'HD'};
+let userQ='auto';
+const isVid=()=>np.classList.contains('video');
+const loadId=id=>player.loadVideoById({videoId:id,suggestedQuality:isVid()?'default':'small'});
+const qLabel=q=>{$('qBtn').textContent=userQ==='auto'?'Auto'+(q&&q!=='auto'&&QN[q]?' · '+QN[q]:''):(QN[q]||'HD')};
+const autoQ=()=>{try{player.setPlaybackQualityRange&&player.setPlaybackQualityRange('tiny','highres');player.setPlaybackQuality('default')}catch(e){}qLabel('auto')};
 function bestQ(q){
   if(!ready||!player.getAvailableQualityLevels||(userQ==='auto'&&!q))return;
   const t=q||userQ||player.getAvailableQualityLevels().filter(x=>x!=='auto')[0];if(!t)return;
@@ -486,9 +488,9 @@ function bestQ(q){
 }
 $('qBtn').onclick=e=>{e.stopPropagation();const m=$('qMenu');if(!ready)return;
   if(m.classList.toggle('open')){m.innerHTML='';const L=player.getAvailableQualityLevels();
-    (L.length?L:['auto']).forEach(q=>{const b=document.createElement('button');b.textContent=QN[q]||q;
+    ['auto',...L.filter(x=>x!=='auto')].forEach(q=>{const b=document.createElement('button');b.textContent=(QN[q]||q)+(q==='auto'?' (recomendado)':'');
       b.onclick=()=>{m.classList.remove('open');userQ=q==='auto'?'auto':q;
-        if(q==='auto'){try{player.setPlaybackQualityRange&&player.setPlaybackQualityRange('tiny','highres');player.setPlaybackQuality('default')}catch(e){}qLabel('auto')}else bestQ(q)};
+        if(q==='auto')autoQ();else bestQ(q)};
       m.appendChild(b)})}};
 /* ---------- controles estilo YouTube ---------- */
 (()=>{const v=$('vov'),st=$('stage');let last=0,hid;
@@ -504,7 +506,7 @@ $('qBtn').onclick=e=>{e.stopPropagation();const m=$('qMenu');if(!ready)return;
     setTimeout(()=>bestQ(),600)};
   document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)try{screen.orientation.unlock()}catch(e){}});
 })();
-new MutationObserver(()=>{if(np.classList.contains('video'))setTimeout(()=>bestQ(),400);else $('qMenu').classList.remove('open')}).observe(np,{attributes:true,attributeFilter:['class']});
+new MutationObserver(()=>{if(np.classList.contains('video'))setTimeout(()=>userQ==='auto'?(ready&&autoQ()):bestQ(),400);else $('qMenu').classList.remove('open')}).observe(np,{attributes:true,attributeFilter:['class']});
 try{const ms=navigator.mediaSession;ms.setActionHandler('play',()=>player&&player.playVideo());ms.setActionHandler('pause',()=>player&&player.pauseVideo());ms.setActionHandler('previoustrack',prev);ms.setActionHandler('nexttrack',next)}catch(e){}
 
 /* ---------- letra sincronizada ---------- */
@@ -645,13 +647,12 @@ async function searchMusic(q){
     };
     return await call(sMode==='music');
   }
-  for(const b of PIPED)for(const f of (sMode==='music'?['music_songs','videos']:['videos'])){
-    try{
-      const j=await getJson(b+'/search?q='+encodeURIComponent(q)+'&filter='+f);
-      const it=(j.items||[]).filter(x=>x.url&&x.url.includes('v=')).map(x=>({id:x.url.split('v=')[1].split('&')[0],title:x.title,author:x.uploaderName,v:sMode!=='music'}));
-      if(it.length)return it;
-    }catch(e){}
-  }
+  const tryOne=async(b,f)=>{
+    const j=await getJson(b+'/search?q='+encodeURIComponent(q)+'&filter='+f,4500);
+    const it=(j.items||[]).filter(x=>x.url&&x.url.includes('v=')).map(x=>({id:x.url.split('v=')[1].split('&')[0],title:x.title,author:x.uploaderName,v:sMode!=='music'}));
+    if(!it.length)throw new Error('vacio');return it};
+  const fl=sMode==='music'?['music_songs','videos']:['videos'];
+  for(const f of fl){try{return await Promise.any(PIPED.map(b=>tryOne(b,f)))}catch(e){}}
   throw new Error('nokey');
 }
 function hint(el,t){el.innerHTML='';const d=document.createElement('div');d.className='hint';d.textContent=t;el.appendChild(d)}
