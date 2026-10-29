@@ -496,6 +496,9 @@ body:not(.playing) #bg b,body:not(.playing) #np::before{animation-play-state:pau
     <div class="set glass">
       <input class="in" id="apikey" placeholder="Clave de YouTube Data API v3" autocomplete="off" spellcheck="false">
       <button class="pill glass" id="saveKey" style="align-self:flex-start">Guardar clave</button>
+      <input class="in" id="lyapi" placeholder="Servidor de letras palabra por palabra (opcional) https://…" autocomplete="off" spellcheck="false" inputmode="url">
+      <button class="pill glass" id="saveLyApi" style="align-self:flex-start">Guardar servidor</button>
+      <span>Si tu servidor responde con las palabras y sus tiempos en milisegundos, la letra se ilumina palabra por palabra con esa precisión. Déjalo vacío para usar las letras de siempre.</span>
       <span>Idioma de traducción de la letra</span><select class="in" id="tlang"></select>
       <label class="chk"><input type="checkbox" id="oAcv"> Portada animada (movimiento suave mientras suena)</label>
       <label class="chk only-touch"><input type="checkbox" id="oOri"> Bloquear en vertical (la app no gira a horizontal)</label>
@@ -557,6 +560,8 @@ const ld=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?
 const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const DEFAULT_KEY='';   // opcional: pega aquí tu clave (restringida a tu sitio)
 const getKey=()=>{try{return localStorage.getItem('ytkey')||DEFAULT_KEY}catch(e){return DEFAULT_KEY}};
+const DEFAULT_LYAPI='';   // opcional: URL de tu servidor de letras (formato JSON palabra por palabra, ver normLyricsJSON)
+const getLyApi=()=>{try{return(localStorage.getItem('lyapi')||DEFAULT_LYAPI).trim()}catch(e){return DEFAULT_LYAPI}};
 let fav=ld('fav',[]),hist=ld('hist',[]),queue=[],qi=-1,curId='',player,ready=false,pending=null,timer,opened=false;
 let lines=[],synced=false,active=-1,userScroll=0,freeMode=false,tt;
 const np=$('np'),pane=$('pane');
@@ -691,13 +696,25 @@ new MutationObserver(()=>{if(np.classList.contains('video'))setTimeout(()=>userQ
 try{const ms=navigator.mediaSession;ms.setActionHandler('play',()=>player&&player.playVideo());ms.setActionHandler('pause',()=>player&&player.pauseVideo());ms.setActionHandler('previoustrack',prev);ms.setActionHandler('nexttrack',next)}catch(e){}
 
 /* ---------- letra sincronizada ---------- */
-function center(el){if(el&&pane.classList.contains('t-lyr')&&pane.clientHeight)pane.scrollTo({top:el.offsetTop-pane.clientHeight/2+el.offsetHeight/2,behavior:'smooth'})}
+/* Mantiene la línea activa en el centro del panel. Suave entre líneas vecinas; salto directo si está lejos (al buscar en la barra) o si el sistema pide menos movimiento. */
+const reduceMotion=matchMedia('(prefers-reduced-motion:reduce)');
+function center(el,instant){
+  if(!el||!pane.classList.contains('t-lyr')||!pane.clientHeight)return;
+  const top=Math.max(0,el.offsetTop-pane.clientHeight/2+el.offsetHeight/2);
+  const far=Math.abs(top-pane.scrollTop)>pane.clientHeight*1.2;
+  pane.scrollTo({top,behavior:(instant||far||reduceMotion.matches)?'auto':'smooth'});
+}
 function highlight(force){
   $('lprevT').textContent=(synced&&lines[active]&&lines[active].s)||'Letra';
   [...$('lyrics').children].forEach((el,k)=>{el.classList.toggle('on',k===active);el.style.setProperty('--d',active<0?3:Math.min(Math.abs(k-active),5));if(k!==active)el.style.removeProperty('--p')});
   if(force||Date.now()-userScroll>2500)center($('lyrics').children[active]);
 }
-['wheel','touchmove'].forEach(ev=>pane.addEventListener(ev,()=>userScroll=Date.now(),{passive:true}));
+/* si el usuario se desplaza a mano, se respeta 3 s y luego la letra vuelve sola a la línea activa */
+let idleT=0;
+const userTouched=()=>{userScroll=Date.now();clearTimeout(idleT);idleT=setTimeout(()=>{if(synced&&!picking)center($('lyrics').children[active])},3000)};
+['wheel','touchmove','touchend'].forEach(ev=>pane.addEventListener(ev,userTouched,{passive:true}));
+/* al girar el teléfono o cambiar el tamaño de la ventana, la línea activa sigue centrada */
+if(window.ResizeObserver){let rz=0;new ResizeObserver(()=>{clearTimeout(rz);rz=setTimeout(()=>{if(synced&&!picking&&Date.now()-userScroll>2500)center($('lyrics').children[active],true)},120)}).observe(pane)}
 const parseLrc=t=>{const out=[],re=/\[(\d+):(\d+(?:[.:]\d+)?)\]/g;
   t.split(/\r?\n/).forEach(l=>{const ts=[...l.matchAll(re)];if(!ts.length)return;
     const raw=l.replace(re,''),x=raw.replace(/<\d+:\d+(?:[.:]\d+)?>/g,'').replace(/\s+/g,' ').trim();
@@ -710,6 +727,45 @@ const parseLrc=t=>{const out=[],re=/\[(\d+):(\d+(?:[.:]\d+)?)\]/g;
     }
     ts.forEach(m=>out.push({t:+m[1]*60+parseFloat(m[2].replace(':','.')),s:x,w}))});
   return out.sort((a,b)=>a.t-b.t)};
+/* ---------- letra palabra por palabra desde un servidor ----------
+   Formato esperado (tiempos en milisegundos desde el inicio de la canción):
+   { "lines":[ { "words":[ {"text":"Hola","startTime":12340,"endTime":12800}, … ] }, … ] }
+   También sirve un array de líneas directo, y una línea sin "words" puede traer text / startTime / endTime
+   (sus palabras se reparten solas). Una línea sin texto marca una pausa instrumental.
+   Devuelve las líneas en el formato interno {t, s, w:[{t0,t1,txt,sp}], ex} (segundos), o null si no sirve. */
+const NOSP=/[぀-ヿ㐀-鿿가-힯฀-๿]/;
+function normLyricsJSON(data){
+  const src=Array.isArray(data)?data:(data&&(data.lines||data.lyrics));
+  if(!Array.isArray(src))return null;
+  const num=v=>{if(v==null||v==='')return null;v=+v;return isFinite(v)?v:null};
+  const out=[];
+  src.forEach(L=>{
+    if(!L||typeof L!=='object')return;
+    const raws=[];
+    (Array.isArray(L.words)?L.words:[]).forEach(w=>{
+      const raw=String(w&&w.text!=null?w.text:''),a=num(w&&w.startTime),b=num(w&&w.endTime),txt=raw.trim();
+      if(txt&&a!=null)raws.push({t0:a/1000,t1:b==null?null:b/1000,txt,tr:/\s$/.test(raw)});
+    });
+    if(raws.length){
+      raws.sort((x,y)=>x.t0-y.t0);
+      /* si el servidor marca los espacios al final de cada palabra se respetan; si no, van separadas por espacio */
+      const marked=raws.some(w=>w.tr);
+      const ws=raws.map((w,k)=>{
+        const nx=raws[k+1];let t1=w.t1;
+        if(t1==null||t1<=w.t0)t1=nx&&nx.t0>w.t0?nx.t0:w.t0+.3;
+        else if(nx&&nx.t0>w.t0&&t1>nx.t0)t1=nx.t0;
+        const sp=!nx?true:marked?w.tr:!(NOSP.test(w.txt.slice(-1))&&NOSP.test(nx.txt[0]));
+        return {t0:w.t0,t1,txt:w.txt,sp};
+      });
+      out.push({t:ws[0].t0,s:ws.map((w,k)=>w.txt+(w.sp&&k<ws.length-1?' ':'')).join(''),w:ws,ex:true});
+    }else{
+      const t=num(L.startTime),s=String(L.text!=null?L.text:'').replace(/\s+/g,' ').trim();
+      if(t!=null)out.push({t:t/1000,s,w:null});
+    }
+  });
+  out.sort((a,b)=>a.t-b.t);
+  return out.some(x=>x.s)?out:null;
+}
 function msg(t){const m=$('msg');m.textContent=t||'';m.classList.toggle('on',!!t)}
 /* palabras de una línea: tiempos reales si la fuente los trae; si no, se reparten según el largo de cada palabra */
 function estWords(x,nx){
@@ -729,7 +785,7 @@ function showLyr(arr,sync){
     if(x.s){const w=document.createElement('span');w.className='w';
       if(sync){
         const nx=arr[i+1];
-        if(x.w&&x.w.length){x.ws=x.w;const last=x.ws[x.ws.length-1];last.t1=Math.max(last.t0+.3,Math.min(nx?nx.t-.05:last.t0+1.5,last.t0+2))}
+        if(x.w&&x.w.length){x.ws=x.w;if(!x.ex){const last=x.ws[x.ws.length-1];last.t1=Math.max(last.t0+.3,Math.min(nx?nx.t-.05:last.t0+1.5,last.t0+2))}}
         else x.ws=estWords(x,nx);
         if(x.ws.length){d._wd=[];x.ws.forEach((o,k)=>{const sp=document.createElement('span');sp.className='wd';sp.textContent=o.txt;w.appendChild(sp);d._wd.push(sp);if(o.sp&&k<x.ws.length-1)w.appendChild(document.createTextNode(' '))})}
         else w.textContent=x.s;
@@ -772,10 +828,25 @@ function lyPick(all,T,A,d){
   const best=res[0];if(!best)return null;
   const near=res.filter(x=>x.sy&&x.score>=best.score-.15).sort((a,b)=>(a.dd==null?99:a.dd)-(b.dd==null?99:b.dd));return near[0]||best;
 }
-function setSrc(n){const a=$('lySrc');if(!a)return;if(n==='ovh'){a.textContent='Letra de lyrics.ovh';a.href='https://lyrics.ovh'}else{a.textContent='Letra de lrclib.net';a.href='https://lrclib.net'}}
+function setSrc(n){const a=$('lySrc');if(!a)return;if(n==='api'){const u=getLyApi();a.textContent='Letra de '+(u.replace(/^https?:\/\//i,'').split(/[\/?]/)[0]||'tu servidor');a.href=u||'#'}else if(n==='ovh'){a.textContent='Letra de lyrics.ovh';a.href='https://lyrics.ovh'}else{a.textContent='Letra de lrclib.net';a.href='https://lrclib.net'}}
 async function findLyrics(song,art){
   const my=++lySeq;lofs=lyo[curId]||0;stopPick();lines=[];synced=false;$('lyrics').innerHTML='';$('lprevT').textContent='Letra';setSrc('lrclib');
   const mg=$('msg');mg.onclick=null;mg.classList.remove('retry');
+  /* 1) tu servidor (si lo configuraste): letra con tiempos por palabra en milisegundos */
+  const lyApi=getLyApi();
+  if(lyApi){
+    msg('Buscando letra…');
+    let d0=0;for(let k=0;k<6&&!(d0=ready&&player.getDuration?player.getDuration():0);k++)await new Promise(r=>setTimeout(r,250));
+    if(my!==lySeq)return;
+    try{
+      const e=encodeURIComponent,u=lyApi+(lyApi.includes('?')?'&':'?')+'title='+e(song)+'&artist='+e(art)+(d0?'&duration='+Math.round(d0):'')+(curId?'&id='+e(curId):'');
+      const arr=normLyricsJSON(await getJson(u,7000));
+      if(my!==lySeq)return;
+      if(arr){setSrc('api');return showLyr(arr,true)}
+    }catch(e){}
+    if(my!==lySeq)return;
+    msg('');setSrc('lrclib');
+  }
   const lid=curId,lc=lyc[lid];
   if(lc){setSrc(lc.src==='ovh'?'ovh':'lrclib');return showLyr(lc.sy?parseLrc(lc.s):lc.s.split('\n').map(x=>({s:x})),!!lc.sy)}
   msg('Buscando letra…');
@@ -965,6 +1036,12 @@ function setFree(f){sMode=f===true?'cc':f===false?'music':f;freeMode=sMode==='cc
 $$('#fSeg button').forEach(b=>b.onclick=()=>setFree(b.dataset.f));
 $('nFree').onclick=()=>{go('search');setFree(true)};
 $('saveKey').onclick=()=>{try{localStorage.setItem('ytkey',$('apikey').value.trim());toast('Clave guardada')}catch(e){toast('No se pudo guardar la clave')}};
+$('lyapi').value=getLyApi();
+$('saveLyApi').onclick=()=>{
+  const v=$('lyapi').value.trim();
+  if(v&&!/^https?:\/\//i.test(v))return toast('La dirección debe empezar con http:// o https://');
+  try{if(v)localStorage.setItem('lyapi',v);else localStorage.removeItem('lyapi');toast(v?'Servidor de letras guardado':'Servidor de letras quitado')}catch(e){toast('No se pudo guardar')}
+};
 ['Pop','Rock','Lo-fi','Reggaetón','Salsa','Cumbia','Baladas','Hip hop','Jazz','Electrónica','Clásica','Indie'].forEach((n,i)=>{const b=document.createElement('button');b.className='pill tile';b.style.background=`linear-gradient(135deg,hsl(${i*37+340} 70% 48%),hsl(${i*37+10} 75% 28%))`;b.textContent=n;b.onclick=()=>{go('search');setFree(false);$('sq').value=n+' música';doSearch()};$('hChips').appendChild(b)});
 
 document.addEventListener('keydown',e=>{

@@ -1,0 +1,21 @@
+{
+  "lines": [
+    { "words": [
+      { "text": "Hello",    "startTime": 10000, "endTime": 10500 },
+      { "text": "darkness", "startTime": 10600, "endTime": 11100 },
+      { "text": "my",       "startTime": 11200, "endTime": 11500 },
+      { "text": "old",      "startTime": 11500, "endTime": 11800 },
+      { "text": "friend",   "startTime": 11800, "endTime": 12800 }
+    ] },
+    { "startTime": 14000, "words": [] },
+    { "words": [
+      { "text": "I've",   "startTime": 16000, "endTime": 16300 },
+      { "text": "come",   "startTime": 16300, "endTime": 16700 },
+      { "text": "to",     "startTime": 16700, "endTime": 16900 },
+      { "text": "talk",   "startTime": 16900, "endTime": 17300 },
+      { "text": "with",   "startTime": 17300, "endTime": 17600 },
+      { "text": "you",    "startTime": 17600, "endTime": 18200 },
+      { "text": "again",  "startTime": 18200, "endTime": 19500 }
+    ] }
+  ]
+}
