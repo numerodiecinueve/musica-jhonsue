@@ -420,6 +420,18 @@ body.acv.playing #eq i{animation:eqb .8s ease-in-out infinite alternate}
 #lyrics.lm .l.on .w,#lyrics.lm .l.on .wd{background:none;-webkit-text-fill-color:#fff}
 #lyrics.pick .wd{background:none!important;-webkit-text-fill-color:currentColor!important}
 #tSync{font-size:12px!important}
+#tSmart.on,#tCal.on{background:rgba(255,255,255,.28)}
+#tSmart.on{color:#fff;text-shadow:0 0 8px rgba(255,255,255,.8)}
+#lyrics.cal .l{cursor:crosshair;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+@media(max-width:900px){
+ /* con tantos botones la barra se acomoda en dos filas en vez de salirse de la pantalla */
+ #ltools{align-items:flex-start}
+ #tBar{display:none}
+ #ltools.open #tBar{display:flex;flex-wrap:wrap;justify-content:flex-end;max-width:min(330px,calc(100vw - 96px));opacity:1;overflow:visible;pointer-events:auto;transition:none;margin-right:2px;animation:tbIn .22s ease}
+ #tBar button{flex:none}
+}
+@keyframes tbIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){#ltools.open #tBar{animation:none}}
 /* ---------- rendimiento ---------- */
 body.hid *,body.hid *::before,body.hid *::after{animation-play-state:paused!important}
 body:not(.playing) #bg b,body:not(.playing) #np::before{animation-play-state:paused}
@@ -514,7 +526,7 @@ body:not(.playing) #bg b,body:not(.playing) #np::before{animation-play-state:pau
     <button class="chev glass" id="npClose" title="Cerrar"><svg><use href="#i-x"/></svg></button>
     <div class="seg glass" id="modeSeg"><i></i><button class="on" data-m="song">Canción</button><button data-m="cover">Portada</button><button data-m="video">Video</button></div>
   </div>
-  <div id="ltools" class="glass"><div id="tBar"><button id="tFont" title="Fuente de la letra">Aa</button><button id="tTr" title="Traducción y pronunciación">文A</button><button id="tSm" title="Letra más pequeña">A−</button><button id="tLg" title="Letra más grande">A+</button><button id="tFs" title="Letra a pantalla completa">⛶</button><button id="tSync" title="Sincronización: palabra por palabra / línea por línea">Pal</button><button id="tM" title="Retrasar letra">−</button><button id="tP" title="Adelantar letra">+</button><button id="tRot" title="Girar pantalla o bloquear en vertical">↻</button><button id="tShare" title="Compartir una línea como imagen"><svg style="width:17px;height:17px"><use href="#i-share"/></svg></button></div><button id="tMore" title="Opciones de la letra" aria-expanded="false"><svg><use href="#i-tune"/></svg></button><div id="fMenu" class="glass"></div></div>
+  <div id="ltools" class="glass"><div id="tBar"><button id="tFont" title="Fuente de la letra">Aa</button><button id="tTr" title="Traducción y pronunciación">文A</button><button id="tSm" title="Letra más pequeña">A−</button><button id="tLg" title="Letra más grande">A+</button><button id="tFs" title="Letra a pantalla completa">⛶</button><button id="tSync" title="Sincronización: palabra por palabra / línea por línea">Pal</button><button id="tSmart" title="Modo inteligente: ritmo de la canción, retraso del audio y más">✦</button><button id="tCal" title="Calibrar: toca la línea que está sonando">◎</button><button id="tAlt" title="Probar otra versión de la letra">⇄</button><button id="tM" title="Retrasar letra">−</button><button id="tP" title="Adelantar letra">+</button><button id="tRot" title="Girar pantalla o bloquear en vertical">↻</button><button id="tShare" title="Compartir una línea como imagen"><svg style="width:17px;height:17px"><use href="#i-share"/></svg></button></div><button id="tMore" title="Opciones de la letra" aria-expanded="false"><svg><use href="#i-tune"/></svg></button><div id="fMenu" class="glass"></div></div>
   <div class="np-left">
     <div id="stage"><div id="cover"></div><div id="eq"><i></i><i></i><i></i><i></i></div><div id="yt"><div id="ytp"></div></div><button id="qBtn" class="glass" title="Calidad">Auto</button><div id="qMenu" class="glass"></div>
       <div id="vov"><div class="vmid"><button id="vBack">−10</button><button class="b-play" id="vPlay"><svg><use href="#i-play"/></svg></button><button id="vFwd">+10</button></div>
@@ -569,6 +581,10 @@ const fmt=s=>{s=Math.max(0,Math.floor(s));return Math.floor(s/60)+':'+String(s%6
 const isFav=id=>fav.some(x=>x.id===id);
 let picking=false,picked=[],coverBars=false,ori=ld('ori',(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<700)?'portrait':'auto'),oriWarned=false,wmode=ld('wmode','word'),lyo=ld('lyo',{}),tRef=0,tAt=0,tLast=-1,rafId=0;
 const LOOK=.22;
+/* modo inteligente */
+let smart=ld('smart',true),lat=0,lyAlts=[],lyAltI=0,calibrating=false,lyLast=null,TEMPO=.27;
+const REACT=.2,STALL=1.2;   // REACT: lo que tardas en tocar tras oír la línea · STALL: tope de avance sin lecturas nuevas del reproductor (buffering)
+const effOff=()=>lofs-(smart?lat:0);
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2200)}
 
 /* ---------- lente de cristal ---------- */
@@ -616,11 +632,13 @@ function smoothTime(){
     if(Math.abs(raw-est)>.6||!tAt){tRef=raw}else tRef=est+(raw-est)*.5;
     tAt=now;
   }
-  return tRef+(now-tAt)/1000*((player.getPlaybackRate&&player.getPlaybackRate())||1);
+  /* si el reproductor deja de dar lecturas nuevas (se quedó cargando) no seguimos adelantando la letra por nuestra cuenta */
+  const adv=(now-tAt)/1000;
+  return tRef+(smart?Math.min(adv,STALL):adv)*((player.getPlaybackRate&&player.getPlaybackRate())||1);
 }
 function syncLyr(rt){
   if(!synced||!lines.length)return;
-  const t=rt+lofs;let lo=0,hi=lines.length-1,i=-1;
+  const t=rt+effOff();let lo=0,hi=lines.length-1,i=-1;
   while(lo<=hi){const m=(lo+hi)>>1;if(lines[m].t<=t+LOOK){i=m;lo=m+1}else hi=m-1}
   if(i!==active){active=i;highlight()}
   if(i>=0&&wmode==='word'){
@@ -629,7 +647,7 @@ function syncLyr(rt){
   }
 }
 const lyrVisible=()=>np.classList.contains('open')&&pane.classList.contains('t-lyr');
-function rafLoop(){rafId=0;if(!synced||document.hidden||!ready||!document.body.classList.contains('playing')||!lyrVisible())return;syncLyr(smoothTime());rafId=requestAnimationFrame(rafLoop)}
+function rafLoop(){rafId=0;if(!synced||document.hidden||!ready||!lyrVisible())return;syncLyr(smoothTime());if(document.body.classList.contains('playing'))rafId=requestAnimationFrame(rafLoop)}   // en pausa hace una sola pasada, para no perder la actualización de tick()
 function kickRaf(){if(!rafId&&synced&&!document.hidden&&lyrVisible())rafId=requestAnimationFrame(rafLoop)}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)kickRaf()});
 function tick(){
@@ -778,20 +796,53 @@ function estWords(x,nx){
   const tot=toks.reduce((a,w)=>a+w.txt.length+1,0);let c=x.t;
   return toks.map(w=>{const d=dur*(w.txt.length+1)/tot,o={t0:c,t1:c+d,txt:w.txt,sp:w.sp};c+=d;return o});
 }
+/* ---------- tiempos de palabra inteligentes (cuando la fuente solo trae el inicio de cada línea) ----------
+   · el ritmo (segundos por sílaba) se calcula de la propia canción: mediana de las líneas seguidas
+   · cada palabra pesa por sus sílabas; las comas y los puntos dejan una pausa
+   · si la línea dura más de lo que tardas en decirla, la última palabra se sostiene
+   · si hay un hueco largo (instrumental), la línea no se estira hasta el final del hueco */
+const CJK=/[぀-ヿ一-鿿가-힯]/,VOW=/[aeiouyáéíóúüàèìòùâêîôûäëïöåãõæœ]+/gi;
+const syl=t=>{const c=t.replace(/[^\p{L}']/gu,'');if(!c)return .5;if(CJK.test(c))return c.length;return Math.max(1,(c.match(VOW)||[]).length)};
+function smartTok(s){
+  const toks=[];(s||'').split(/\s+/).filter(Boolean).forEach(t=>{
+    if(t.length>6&&CJK.test(t)){for(let i=0;i<t.length;i+=2)toks.push({txt:t.slice(i,i+2),sp:i+2>=t.length})}
+    else toks.push({txt:t,sp:true})});
+  toks.forEach((w,k)=>{w.sy=syl(w.txt);const e=w.txt.slice(-1);w.ps=k===toks.length-1?0:/[,;:]/.test(e)?.5:/[.!?…]/.test(e)?1:0});
+  return toks;
+}
+function lyTempo(arr){
+  const v=[];
+  for(let i=0;i<arr.length-1;i++){const g=arr[i+1].t-arr[i].t;if(!arr[i].s||g<=.6||g>6.5)continue;const n=smartTok(arr[i].s).reduce((a,w)=>a+w.sy,0);if(n>=3)v.push(g*.9/n)}
+  if(v.length<4)return .27;
+  v.sort((a,b)=>a-b);return Math.min(.6,Math.max(.14,v[v.length>>1]));
+}
+function smartWords(x,nx){
+  const toks=smartTok(x.s);if(!toks.length)return [];
+  const sy=toks.reduce((a,w)=>a+w.sy,0),ps=toks.reduce((a,w)=>a+w.ps,0);
+  const natural=sy*TEMPO+toks.length*.05+ps*TEMPO;
+  const avail=nx?Math.max(.5,nx.t-x.t-.1):natural*1.3+.6;
+  let D=Math.min(avail,Math.max(natural*1.15,.8));
+  if(avail<=6)D=Math.min(avail,Math.max(D,avail*.6));
+  const hold=Math.max(0,D-natural*1.15)*.7,base=D-hold;
+  const U=toks.reduce((a,w)=>a+w.sy+.35+w.ps,0),u=base/U;
+  let c=x.t;
+  return toks.map((w,k)=>{const d=(w.sy+.35)*u+(k===toks.length-1?hold:0),o={t0:c,t1:c+d,txt:w.txt,sp:w.sp};c+=d+w.ps*u;return o});
+}
 function showLyr(arr,sync){
-  lines=arr;synced=sync;active=-1;msg('');
+  lines=arr;synced=sync;active=-1;msg('');calibrating=false;$('tCal')&&$('tCal').classList.remove('on');
+  if(sync&&smart)TEMPO=lyTempo(arr);
   const c=$('lyrics');c.className=sync?(wmode==='word'?'wm':'lm'):'plain';c.innerHTML='';
   arr.forEach((x,i)=>{const d=document.createElement('div');d.className='l';
     if(x.s){const w=document.createElement('span');w.className='w';
       if(sync){
         const nx=arr[i+1];
         if(x.w&&x.w.length){x.ws=x.w;if(!x.ex){const last=x.ws[x.ws.length-1];last.t1=Math.max(last.t0+.3,Math.min(nx?nx.t-.05:last.t0+1.5,last.t0+2))}}
-        else x.ws=estWords(x,nx);
+        else x.ws=(smart?smartWords:estWords)(x,nx);
         if(x.ws.length){d._wd=[];x.ws.forEach((o,k)=>{const sp=document.createElement('span');sp.className='wd';sp.textContent=o.txt;w.appendChild(sp);d._wd.push(sp);if(o.sp&&k<x.ws.length-1)w.appendChild(document.createTextNode(' '))})}
         else w.textContent=x.s;
       }else w.textContent=x.s;
       d.appendChild(w)}else d.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';
-    d.onclick=()=>{if(picking){togglePick(d);return}if(sync)player.seekTo(Math.max(0,x.t-lofs),true)};c.appendChild(d)});
+    d.onclick=()=>{if(picking){togglePick(d);return}if(calibrating&&sync&&x.s){calibrate(x);return}if(sync)player.seekTo(Math.max(0,x.t-effOff()),true)};c.appendChild(d)});
   pane.scrollTop=0;highlight();applyTr();kickRaf();
 }
 /* ---------- búsqueda de letra: hace el mayor esfuerzo, en cualquier idioma ---------- */
@@ -814,6 +865,7 @@ function lyCands(song,art,raw,chan){
   return {T:[...T].slice(0,6),A:[...A].filter(Boolean).slice(0,4)};
 }
 function lyPick(all,T,A,d){
+  lyPick.res=[];
   const seen=new Set(),res=[];
   for(const r of all){
     if(!r||!(r.syncedLyrics||r.plainLyrics)||seen.has(r.id))continue;seen.add(r.id);
@@ -824,17 +876,19 @@ function lyPick(all,T,A,d){
     const score=ts*.55+as*.2+dur*.25+(r.syncedLyrics?.08:0);
     if(ts>=.55&&(as>=.35||dur>=.6||ts>=.9)&&score>=.6)res.push({r,score,sy:!!r.syncedLyrics,dd});
   }
-  res.sort((a,b)=>b.score-a.score);
+  res.sort((a,b)=>b.score-a.score);lyPick.res=res;
   const best=res[0];if(!best)return null;
   const near=res.filter(x=>x.sy&&x.score>=best.score-.15).sort((a,b)=>(a.dd==null?99:a.dd)-(b.dd==null?99:b.dd));return near[0]||best;
 }
 function setSrc(n){const a=$('lySrc');if(!a)return;if(n==='api'){const u=getLyApi();a.textContent='Letra de '+(u.replace(/^https?:\/\//i,'').split(/[\/?]/)[0]||'tu servidor');a.href=u||'#'}else if(n==='ovh'){a.textContent='Letra de lyrics.ovh';a.href='https://lyrics.ovh'}else{a.textContent='Letra de lrclib.net';a.href='https://lrclib.net'}}
-async function findLyrics(song,art){
+async function findLyrics(song,art,opt){
+  const fresh=!!(opt&&opt.fresh);
   const my=++lySeq;lofs=lyo[curId]||0;stopPick();lines=[];synced=false;$('lyrics').innerHTML='';$('lprevT').textContent='Letra';setSrc('lrclib');
+  lyLast={song,art};lyAlts=[];lyAltI=0;
   const mg=$('msg');mg.onclick=null;mg.classList.remove('retry');
   /* 1) tu servidor (si lo configuraste): letra con tiempos por palabra en milisegundos */
   const lyApi=getLyApi();
-  if(lyApi){
+  if(lyApi&&!fresh){
     msg('Buscando letra…');
     let d0=0;for(let k=0;k<6&&!(d0=ready&&player.getDuration?player.getDuration():0);k++)await new Promise(r=>setTimeout(r,250));
     if(my!==lySeq)return;
@@ -848,7 +902,7 @@ async function findLyrics(song,art){
     msg('');setSrc('lrclib');
   }
   const lid=curId,lc=lyc[lid];
-  if(lc){setSrc(lc.src==='ovh'?'ovh':'lrclib');return showLyr(lc.sy?parseLrc(lc.s):lc.s.split('\n').map(x=>({s:x})),!!lc.sy)}
+  if(lc&&!fresh){setSrc(lc.src==='ovh'?'ovh':'lrclib');return showLyr(lc.sy?parseLrc(lc.s):lc.s.split('\n').map(x=>({s:x})),!!lc.sy)}
   msg('Buscando letra…');
   let d=0;for(let k=0;k<20&&!(d=ready&&player.getDuration?player.getDuration():0);k++)await new Promise(r=>setTimeout(r,250));
   if(my!==lySeq)return;
@@ -870,7 +924,12 @@ async function findLyrics(song,art){
     const pk=lyPick(all,T,A,d);
     if(pk){
       const r=pk.r;
-      if(pk.sy){if(d&&pk.dd!=null&&pk.dd>8)toast('Letra aproximada: ajústala con − / +');lycSet(lid,r.syncedLyrics,1,'lrclib');return showLyr(parseLrc(r.syncedLyrics),true)}
+      if(pk.sy){
+        /* versiones alternativas: la elegida primero, luego las demás letras sincronizadas distintas */
+        const seenT=new Set();
+        lyAlts=[pk,...(lyPick.res||[]).filter(x=>x.sy&&x!==pk)].filter(x=>x.sy&&!seenT.has(x.r.syncedLyrics)&&seenT.add(x.r.syncedLyrics)).slice(0,6);lyAltI=0;
+        if(d&&pk.dd!=null&&pk.dd>8)toast('Letra aproximada: toca ◎ para calibrarla o ⇄ para otra versión');
+        lycSet(lid,r.syncedLyrics,1,'lrclib');return showLyr(parseLrc(r.syncedLyrics),true)}
       lycSet(lid,r.plainLyrics,0,'lrclib');return showLyr(r.plainLyrics.split('\n').map(s=>({s})),false);
     }
     // respaldo: otra fuente (solo texto)
@@ -1106,8 +1165,65 @@ async function applyTr(manual){
 }
 const TM=['off','tr','rm','both'],TL={off:'Letra original',tr:'Con traducción',rm:'Con pronunciación',both:'Pronunciación y traducción'};
 $('tTr').onclick=()=>{tmode=TM[(TM.indexOf(tmode)+1)%4];sv('tmode',tmode);toast(TL[tmode]);applyTr(true)};
-const nudge=d=>{lofs=Math.round((lofs+d)*10)/10;if(curId){if(lofs)lyo[curId]=lofs;else delete lyo[curId];const ks=Object.keys(lyo);if(ks.length>120)delete lyo[ks[0]];sv('lyo',lyo)}toast('Letra '+(lofs>0?'+':'')+lofs+' s (se guarda para esta canción)');tick()};
+function setLofs(v,say){
+  lofs=Math.round(v*10)/10;
+  if(curId){if(lofs)lyo[curId]=lofs;else delete lyo[curId];const ks=Object.keys(lyo);if(ks.length>120)delete lyo[ks[0]];sv('lyo',lyo)}
+  if(say)toast('Letra '+(lofs>0?'+':'')+lofs+' s (se guarda para esta canción)');
+  tick();
+}
+const nudge=d=>setLofs(lofs+d,true);
 $('tM').onclick=()=>nudge(-.5);$('tP').onclick=()=>nudge(.5);
+
+/* ---------- modo inteligente: calibrar con un toque, otra versión, latencia del audio ---------- */
+/* Calibrar: tocas la línea que estás oyendo y la app calcula sola el desfase (descontando lo que tardas en tocar) */
+function calibrate(x){
+  calibrating=false;$('tCal').classList.remove('on');$('lyrics').classList.remove('cal');
+  const rt=ready?smoothTime():0;
+  const o=Math.max(-20,Math.min(20,x.t-rt+REACT+(smart?lat:0)));
+  setLofs(o,false);toast('Calibrada: '+(lofs>0?'+':'')+lofs+' s para esta canción');
+}
+$('tCal').onclick=()=>{
+  if(!synced||!lines.length)return toast('Aún no hay letra sincronizada para calibrar');
+  calibrating=!calibrating;$('tCal').classList.toggle('on',calibrating);$('lyrics').classList.toggle('cal',calibrating);
+  toast(calibrating?'Toca la línea que está sonando ahora':'Calibración cancelada');
+};
+/* Otra versión: algunas canciones tienen varias letras sincronizadas (ediciones distintas); pasa a la siguiente */
+$('tAlt').onclick=async()=>{
+  if(!lyLast)return;
+  if(!lyAlts.length){
+    toast('Buscando otras versiones…');await findLyrics(lyLast.song,lyLast.art,{fresh:true});
+    if(!lines.length&&lyc[curId]){const lc=lyc[curId];showLyr(lc.sy?parseLrc(lc.s):lc.s.split('\n').map(x=>({s:x})),!!lc.sy)}   // si la búsqueda falló, se conserva la letra que ya había
+    return toast(lyAlts.length<2?'No hay otras versiones de esta letra':'Versión 1 de '+lyAlts.length+' · toca otra vez para cambiar');
+  }
+  if(lyAlts.length<2)return toast('No hay otras versiones de esta letra');
+  lyAltI=(lyAltI+1)%lyAlts.length;const r=lyAlts[lyAltI].r;
+  lycSet(curId,r.syncedLyrics,1,'lrclib');setLofs(0,false);showLyr(parseLrc(r.syncedLyrics),true);
+  toast('Versión '+(lyAltI+1)+' de '+lyAlts.length+(r.duration?' · '+fmt(r.duration):''));
+};
+/* Latencia de salida (p. ej. Bluetooth): el audio se oye un poco después de lo que marca el reproductor. Se descuenta para que la letra coincida con lo que OYES. */
+let actx=null;
+function readLat(say){
+  if(!smart){lat=0;return}
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC||!('outputLatency' in AC.prototype))return;
+    if(!actx)actx=new AC({latencyHint:'playback'});
+    if(actx.state==='suspended')actx.resume().catch(()=>{});
+    const o=actx.outputLatency||0,n=o>.08?Math.min(.6,o):0;
+    if(Math.abs(n-lat)>.03){lat=n;if(say&&n)toast('Compensando '+n.toFixed(2)+' s de retraso del audio');tick()}
+  }catch(e){}
+}
+['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{readLat();setTimeout(()=>readLat(true),700)},{once:true,passive:true}));
+if(navigator.mediaDevices&&navigator.mediaDevices.addEventListener)navigator.mediaDevices.addEventListener('devicechange',()=>setTimeout(()=>readLat(true),800));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)readLat()});
+function setSmart(on,say){
+  smart=on;sv('smart',on);$('tSmart').classList.toggle('on',on);
+  if(on)readLat(true);else lat=0;
+  if(synced&&lines.length){const keep=active;showLyr(lines,true);active=-1;tick()}
+  if(say)toast(on?'Modo inteligente activado':'Modo inteligente desactivado');
+}
+$('tSmart').onclick=()=>setSmart(!smart,true);
+$('tSmart').classList.toggle('on',smart);
 (()=>{const sel=$('tlang');[['es','Español'],['en','English'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano'],['ja','日本語'],['ko','한국어'],['zh-CN','中文'],['ru','Русский'],['ar','العربية'],['hi','हिन्दी'],['tr','Türkçe'],['id','Indonesia']].forEach(([c,n])=>{const o=document.createElement('option');o.value=c;o.textContent=n;sel.appendChild(o)});
   if(![...sel.options].some(o=>o.value===tlang))tlang='es';sel.value=tlang;sel.onchange=()=>{tlang=sel.value;sv('tlang',tlang);applyTr()}})();
 /* fuente de la letra */
