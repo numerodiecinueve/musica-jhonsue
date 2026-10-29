@@ -412,6 +412,24 @@ body.acv.playing #eq i{animation:eqb .8s ease-in-out infinite alternate}
  #np.video #qlist .row .star{display:none}
  #np.video #qlist .row.cur{background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
 }
+
+/* ---------- letra palabra por palabra ---------- */
+.l .wd{display:inline}
+.l.on .wd{background:linear-gradient(90deg,#fff var(--p,0%),rgba(255,255,255,.45) var(--p,0%));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+#lyrics.wm .l.on .w{background:none;-webkit-text-fill-color:currentColor}
+#lyrics.lm .l.on .w,#lyrics.lm .l.on .wd{background:none;-webkit-text-fill-color:#fff}
+#lyrics.pick .wd{background:none!important;-webkit-text-fill-color:currentColor!important}
+#tSync{font-size:12px!important}
+/* ---------- rendimiento ---------- */
+body.hid *,body.hid *::before,body.hid *::after{animation-play-state:paused!important}
+body:not(.playing) #bg b,body:not(.playing) #np::before{animation-play-state:paused}
+#np:not(.open) *,#np:not(.open) *::before,#np:not(.open) *::after{animation-play-state:paused!important}
+@media(pointer:coarse){
+ #bg{filter:blur(48px) saturate(1.7)}
+ #np::before{filter:blur(30px) saturate(1.5)}
+ .glass{-webkit-backdrop-filter:blur(16px) saturate(1.6);backdrop-filter:blur(16px) saturate(1.6)}
+ #stage::before{filter:blur(24px) saturate(1.6)}
+}
 </style>
 </head>
 <body>
@@ -493,7 +511,7 @@ body.acv.playing #eq i{animation:eqb .8s ease-in-out infinite alternate}
     <button class="chev glass" id="npClose" title="Cerrar"><svg><use href="#i-x"/></svg></button>
     <div class="seg glass" id="modeSeg"><i></i><button class="on" data-m="song">Canción</button><button data-m="cover">Portada</button><button data-m="video">Video</button></div>
   </div>
-  <div id="ltools" class="glass"><div id="tBar"><button id="tFont" title="Fuente de la letra">Aa</button><button id="tTr" title="Traducción y pronunciación">文A</button><button id="tSm" title="Letra más pequeña">A−</button><button id="tLg" title="Letra más grande">A+</button><button id="tFs" title="Letra a pantalla completa">⛶</button><button id="tM" title="Retrasar letra">−</button><button id="tP" title="Adelantar letra">+</button><button id="tRot" title="Girar pantalla o bloquear en vertical">↻</button><button id="tShare" title="Compartir una línea como imagen"><svg style="width:17px;height:17px"><use href="#i-share"/></svg></button></div><button id="tMore" title="Opciones de la letra" aria-expanded="false"><svg><use href="#i-tune"/></svg></button><div id="fMenu" class="glass"></div></div>
+  <div id="ltools" class="glass"><div id="tBar"><button id="tFont" title="Fuente de la letra">Aa</button><button id="tTr" title="Traducción y pronunciación">文A</button><button id="tSm" title="Letra más pequeña">A−</button><button id="tLg" title="Letra más grande">A+</button><button id="tFs" title="Letra a pantalla completa">⛶</button><button id="tSync" title="Sincronización: palabra por palabra / línea por línea">Pal</button><button id="tM" title="Retrasar letra">−</button><button id="tP" title="Adelantar letra">+</button><button id="tRot" title="Girar pantalla o bloquear en vertical">↻</button><button id="tShare" title="Compartir una línea como imagen"><svg style="width:17px;height:17px"><use href="#i-share"/></svg></button></div><button id="tMore" title="Opciones de la letra" aria-expanded="false"><svg><use href="#i-tune"/></svg></button><div id="fMenu" class="glass"></div></div>
   <div class="np-left">
     <div id="stage"><div id="cover"></div><div id="eq"><i></i><i></i><i></i><i></i></div><div id="yt"><div id="ytp"></div></div><button id="qBtn" class="glass" title="Calidad">Auto</button><div id="qMenu" class="glass"></div>
       <div id="vov"><div class="vmid"><button id="vBack">−10</button><button class="b-play" id="vPlay"><svg><use href="#i-play"/></svg></button><button id="vFwd">+10</button></div>
@@ -544,7 +562,7 @@ let lines=[],synced=false,active=-1,userScroll=0,freeMode=false,tt;
 const np=$('np'),pane=$('pane');
 const fmt=s=>{s=Math.max(0,Math.floor(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 const isFav=id=>fav.some(x=>x.id===id);
-let picking=false,picked=[],coverBars=false,ori=ld('ori','auto'),oriWarned=false,lyo=ld('lyo',{}),tRef=0,tAt=0,tLast=-1,rafId=0;
+let picking=false,picked=[],coverBars=false,ori=ld('ori',(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<700)?'portrait':'auto'),oriWarned=false,wmode=ld('wmode','word'),lyo=ld('lyo',{}),tRef=0,tAt=0,tLast=-1,rafId=0;
 const LOOK=.22;
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2200)}
 
@@ -581,7 +599,7 @@ function onState(e){
   if(p&&np.classList.contains('video'))setTimeout(()=>bestQ(),300);
   document.body.classList.toggle('playing',p);if(p)wantPlay=true;try{navigator.mediaSession.playbackState=p?'playing':'paused'}catch(e){}wake(p);
   $$('.b-play use').forEach(u=>u.setAttribute('href',p?'#i-pause':'#i-play'));
-  clearInterval(timer);if(p||e.data===2)timer=setInterval(tick,100);tick();kickRaf();
+  clearInterval(timer);if(p||e.data===2)timer=setInterval(tick,TICK);tick();kickRaf();
 }
 /* ---------- seguimiento de la letra: tiempo suavizado + animación fluida ---------- */
 function smoothTime(){
@@ -600,10 +618,14 @@ function syncLyr(rt){
   const t=rt+lofs;let lo=0,hi=lines.length-1,i=-1;
   while(lo<=hi){const m=(lo+hi)>>1;if(lines[m].t<=t+LOOK){i=m;lo=m+1}else hi=m-1}
   if(i!==active){active=i;highlight()}
-  if(i>=0){const el=$('lyrics').children[i];if(el){const L=lines[i],n=lines[i+1];let du=(n?n.t:L.t+4)-L.t||1;du=Math.min(du,Math.max(1.2,(L.s||'').length*.085+.5));el.style.setProperty('--p',Math.min(1,Math.max(0,(t-L.t)/du))*100+'%')}}
+  if(i>=0&&wmode==='word'){
+    const el=$('lyrics').children[i],L=lines[i];
+    if(el&&el._wd&&L.ws){const ws=L.ws;for(let k=0;k<ws.length;k++){const o=ws[k];let q=(t-o.t0)/((o.t1-o.t0)||.01);q=q<=0?0:q>=1?100:Math.round(q*200)/2;const sp=el._wd[k];if(sp&&sp._p!==q){sp._p=q;sp.style.setProperty('--p',q+'%')}}}
+  }
 }
-function rafLoop(){rafId=0;if(!synced||document.hidden||!ready||!document.body.classList.contains('playing'))return;syncLyr(smoothTime());rafId=requestAnimationFrame(rafLoop)}
-function kickRaf(){if(!rafId&&synced&&!document.hidden)rafId=requestAnimationFrame(rafLoop)}
+const lyrVisible=()=>np.classList.contains('open')&&pane.classList.contains('t-lyr');
+function rafLoop(){rafId=0;if(!synced||document.hidden||!ready||!document.body.classList.contains('playing')||!lyrVisible())return;syncLyr(smoothTime());rafId=requestAnimationFrame(rafLoop)}
+function kickRaf(){if(!rafId&&synced&&!document.hidden&&lyrVisible())rafId=requestAnimationFrame(rafLoop)}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)kickRaf()});
 function tick(){
   if(!ready||!player.getDuration)return;
@@ -676,13 +698,43 @@ function highlight(force){
   if(force||Date.now()-userScroll>2500)center($('lyrics').children[active]);
 }
 ['wheel','touchmove'].forEach(ev=>pane.addEventListener(ev,()=>userScroll=Date.now(),{passive:true}));
-const parseLrc=t=>{const out=[],re=/\[(\d+):(\d+(?:[.:]\d+)?)\]/g;t.split(/\r?\n/).forEach(l=>{const ts=[...l.matchAll(re)];if(!ts.length)return;const x=l.replace(re,'').replace(/<\d+:\d+(?:[.:]\d+)?>/g,'').trim();ts.forEach(m=>out.push({t:+m[1]*60+parseFloat(m[2].replace(':','.')),s:x}))});return out.sort((a,b)=>a.t-b.t)};
+const parseLrc=t=>{const out=[],re=/\[(\d+):(\d+(?:[.:]\d+)?)\]/g;
+  t.split(/\r?\n/).forEach(l=>{const ts=[...l.matchAll(re)];if(!ts.length)return;
+    const raw=l.replace(re,''),x=raw.replace(/<\d+:\d+(?:[.:]\d+)?>/g,'').replace(/\s+/g,' ').trim();
+    let w=null;
+    if(/<\d+:\d+/.test(raw)){
+      const parts=raw.split(/<(\d+):(\d+(?:[.:]\d+)?)>/);w=[];
+      for(let i=1;i<parts.length;i+=3){const tm=+parts[i]*60+parseFloat(parts[i+1].replace(':','.')),txt=parts[i+2]||'';if(txt.length)w.push({t0:tm,t1:tm+.3,txt,sp:false})}
+      for(let k=0;k<w.length-1;k++)w[k].t1=w[k+1].t0;
+      if(!w.length)w=null;
+    }
+    ts.forEach(m=>out.push({t:+m[1]*60+parseFloat(m[2].replace(':','.')),s:x,w}))});
+  return out.sort((a,b)=>a.t-b.t)};
 function msg(t){const m=$('msg');m.textContent=t||'';m.classList.toggle('on',!!t)}
+/* palabras de una línea: tiempos reales si la fuente los trae; si no, se reparten según el largo de cada palabra */
+function estWords(x,nx){
+  const toks=[];(x.s||'').split(/\s+/).filter(Boolean).forEach(t=>{
+    if(t.length>6&&/[぀-ヿ一-鿿가-힯]/.test(t)){for(let i=0;i<t.length;i+=2)toks.push({txt:t.slice(i,i+2),sp:i+2>=t.length})}
+    else toks.push({txt:t,sp:true})});
+  if(!toks.length)return [];
+  const gap=(nx?nx.t:x.t+5)-x.t,chars=(x.s||'').replace(/\s+/g,'').length;
+  const dur=Math.max(.6,Math.min(gap-.12,Math.max(1.2,chars*.085+.4)));
+  const tot=toks.reduce((a,w)=>a+w.txt.length+1,0);let c=x.t;
+  return toks.map(w=>{const d=dur*(w.txt.length+1)/tot,o={t0:c,t1:c+d,txt:w.txt,sp:w.sp};c+=d;return o});
+}
 function showLyr(arr,sync){
   lines=arr;synced=sync;active=-1;msg('');
-  const c=$('lyrics');c.className=sync?'':'plain';c.innerHTML='';
-  arr.forEach(x=>{const d=document.createElement('div');d.className='l';
-    if(x.s){const w=document.createElement('span');w.className='w';w.textContent=x.s;d.appendChild(w)}else d.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';
+  const c=$('lyrics');c.className=sync?(wmode==='word'?'wm':'lm'):'plain';c.innerHTML='';
+  arr.forEach((x,i)=>{const d=document.createElement('div');d.className='l';
+    if(x.s){const w=document.createElement('span');w.className='w';
+      if(sync){
+        const nx=arr[i+1];
+        if(x.w&&x.w.length){x.ws=x.w;const last=x.ws[x.ws.length-1];last.t1=Math.max(last.t0+.3,Math.min(nx?nx.t-.05:last.t0+1.5,last.t0+2))}
+        else x.ws=estWords(x,nx);
+        if(x.ws.length){d._wd=[];x.ws.forEach((o,k)=>{const sp=document.createElement('span');sp.className='wd';sp.textContent=o.txt;w.appendChild(sp);d._wd.push(sp);if(o.sp&&k<x.ws.length-1)w.appendChild(document.createTextNode(' '))})}
+        else w.textContent=x.s;
+      }else w.textContent=x.s;
+      d.appendChild(w)}else d.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';
     d.onclick=()=>{if(picking){togglePick(d);return}if(sync)player.seekTo(Math.max(0,x.t-lofs),true)};c.appendChild(d)});
   pane.scrollTop=0;highlight();applyTr();kickRaf();
 }
@@ -827,8 +879,8 @@ async function playTrack(i,opt){
 }
 
 /* ---------- pantalla reproduciendo ---------- */
-function setTab(t){np.classList.toggle('pm',t!=='cover'&&matchMedia('(max-width:900px)').matches);np.classList.toggle('ly',t==='lyr');$('nLyr').classList.toggle('on',t==='lyr');$('nQ').classList.toggle('on',t==='next');$('dLyr').classList.toggle('on',t==='lyr');$('dQ').classList.toggle('on',t==='next');pane.classList.toggle('t-next',t==='next');pane.classList.toggle('t-lyr',t==='lyr');$$('.tabs2 button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));if(t==='lyr')setTimeout(()=>highlight(true),80)}
-function openNP(tab){const was=np.classList.contains('open');np.classList.add('open');document.body.classList.add('np');if(tab)setTab(tab);else if(!was)setTab(matchMedia('(max-width:900px)').matches?'cover':'lyr');lens($('modeSeg'));setTimeout(()=>highlight(true),450)}
+function setTab(t){np.classList.toggle('pm',t!=='cover'&&matchMedia('(max-width:900px)').matches);np.classList.toggle('ly',t==='lyr');$('nLyr').classList.toggle('on',t==='lyr');$('nQ').classList.toggle('on',t==='next');$('dLyr').classList.toggle('on',t==='lyr');$('dQ').classList.toggle('on',t==='next');pane.classList.toggle('t-next',t==='next');pane.classList.toggle('t-lyr',t==='lyr');$$('.tabs2 button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));if(t==='lyr')setTimeout(()=>highlight(true),80);kickRaf()}
+function openNP(tab){const was=np.classList.contains('open');np.classList.add('open');document.body.classList.add('np');if(tab)setTab(tab);else if(!was)setTab(matchMedia('(max-width:900px)').matches?'cover':'lyr');lens($('modeSeg'));setTimeout(()=>highlight(true),450);kickRaf()}
 function closeNP(){np.classList.remove('open');document.body.classList.remove('np');if(lfs)setLfs(false)}
 $$('.tabs2 button').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
 $$('#modeSeg button').forEach(b=>b.onclick=()=>{const m=b.dataset.m;np.classList.toggle('cv',m==='cover');document.body.classList.toggle('cvm',m==='cover');setVid(m==='video');segOn($('modeSeg'),b)});
@@ -1227,7 +1279,7 @@ async function applyOri(){
     if(ori==='portrait'){await screen.orientation.lock('portrait')}
     else screen.orientation.unlock();
   }catch(e){
-    if(ori==='portrait'&&!oriWarned){oriWarned=true;toast('Para bloquear la rotación, instala la app o usa el bloqueo de rotación de tu teléfono')}
+    if(ori==='portrait'&&!oriWarned&&!ld('oriTip',0)){oriWarned=true;sv('oriTip',1);toast('Para bloquear la rotación, instala la app o usa el bloqueo de rotación de tu teléfono')}
   }
 }
 function syncOriUi(){
@@ -1241,9 +1293,23 @@ $('tRot').onclick=e=>{e.stopPropagation();setOri(ori==='portrait'?'auto':'portra
 $('vLock').onclick=e=>{e.stopPropagation();setOri(ori==='portrait'?'auto':'portrait',true)};
 syncOriUi();
 if(ori==='portrait'){applyOri();document.addEventListener('pointerdown',()=>applyOri(),{once:true})}
+/* sincronización: palabra / línea */
+const TICK=matchMedia('(pointer:coarse)').matches?250:100;
+function setWmode(m,say){
+  wmode=m;sv('wmode',m);const c=$('lyrics');
+  if(synced){c.classList.toggle('wm',m==='word');c.classList.toggle('lm',m!=='word')}
+  $('tSync').textContent=m==='word'?'Pal':'Lín';
+  if(say)toast(m==='word'?'Letra palabra por palabra':'Letra línea por línea');
+  kickRaf();
+}
+$('tSync').onclick=()=>setWmode(wmode==='word'?'line':'word',true);
+$('tSync').textContent=wmode==='word'?'Pal':'Lín';
+/* pausar animaciones con la app en segundo plano; mantener el bloqueo vertical */
+document.addEventListener('visibilitychange',()=>{document.body.classList.toggle('hid',document.hidden);if(!document.hidden&&ori==='portrait')applyOri()});
+
 </script>
 <script>
-const APP_VER='2026-10-29-5'; /* sube este valor cada vez que publiques una versión nueva */
+const APP_VER='2026-10-29-6'; /* sube este valor cada vez que publiques una versión nueva */
 (()=>{
   const $=id=>document.getElementById(id);let shown=false;
   async function check(){
