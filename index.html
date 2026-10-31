@@ -631,8 +631,8 @@ let picking=false,picked=[],coverBars=false,ori=ld('ori',(matchMedia('(pointer:c
 const LOOK=.22;
 /* modo inteligente */
 let smart=ld('smart',true),lat=0,lyAlts=[],lyAltI=0,calibrating=false,lyLast=null,TEMPO=.27,lsc=1,lyDur=0,anc=[];const lya=ld('lya',{});
-const lmap=v=>{const a=anc,n=a.length-1;if(n<0)return v*lsc;if(v<=a[0].v)return a[0].l+v-a[0].v;if(v>=a[n].v)return a[n].l+v-a[n].v;let i=0;while(a[i+1].v<v)i++;return a[i].l+(v-a[i].v)*(a[i+1].l-a[i].l)/(a[i+1].v-a[i].v)};
-const linv=t=>{const a=anc,n=a.length-1;if(n<0)return t/lsc;if(t<=a[0].l)return a[0].v+t-a[0].l;if(t>=a[n].l)return a[n].v+t-a[n].l;let i=0;while(a[i+1].l<t)i++;return a[i].v+(t-a[i].l)*(a[i+1].v-a[i].v)/(a[i+1].l-a[i].l)};
+const lmap=v=>{const a=anc,n=a.length-1;if(n<0)return v*lsc;if(v<=a[0].v)return a[0].l+(v-a[0].v)*lsc;if(v>=a[n].v)return a[n].l+(v-a[n].v)*lsc;let i=0;while(a[i+1].v<v)i++;return a[i].l+(v-a[i].v)*(a[i+1].l-a[i].l)/(a[i+1].v-a[i].v)};
+const linv=t=>{const a=anc,n=a.length-1;if(n<0)return t/lsc;if(t<=a[0].l)return a[0].v+(t-a[0].l)/lsc;if(t>=a[n].l)return a[n].v+(t-a[n].l)/lsc;let i=0;while(a[i+1].l<t)i++;return a[i].v+(t-a[i].l)*(a[i+1].v-a[i].v)/(a[i+1].l-a[i].l)};
 const REACT=.2,STALL=1.2;   // REACT: lo que tardas en tocar tras oír la línea · STALL: tope de avance sin lecturas nuevas del reproductor (buffering)
 const effOff=()=>lofs-(smart?lat:0);
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2200)}
@@ -1163,7 +1163,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- v2: video, letra traducida, fuentes, pantalla de bloqueo ---------- */
 let lofs=ld('lofs',0),lastPos=0,sMode='music',lfont=ld('lfont','sys'),tmode=ld('tmode','tr'),tlang=ld('tlang',(navigator.language||'es').split('-')[0]),lySeq=0,trSeq=0,wantPlay=false,wl=null;
 function lowQ(){try{player.setPlaybackQualityRange&&player.setPlaybackQualityRange('tiny','small');player.setPlaybackQuality('tiny')}catch(e){}}
-function setVid(v){try{v?autoQ():lowQ()}catch(e){}if(!matchMedia('(max-width:900px)').matches)setTab(v?'next':'lyr');np.classList.toggle('video',v);$('npVid').classList.toggle('on',v);const b=document.querySelector('#modeSeg [data-m="'+(v?'video':'song')+'"]');if(b&&v)segOn($('modeSeg'),b);if(v&&matchMedia('(max-width:900px)').matches){setTab('cover');pane.classList.add('t-next')}}
+function setVid(v){try{v?autoQ():lowQ()}catch(e){}if(!matchMedia('(max-width:900px)').matches)setTab('lyr');np.classList.toggle('video',v);$('npVid').classList.toggle('on',v);const b=document.querySelector('#modeSeg [data-m="'+(v?'video':'song')+'"]');if(b&&v)segOn($('modeSeg'),b);if(v&&matchMedia('(max-width:900px)').matches){setTab('cover');pane.classList.add('t-next')}}
 $('vOri').onclick=e=>{e.stopPropagation();const v=np.classList.toggle('vert');$('vOri').textContent=v?'9:16':'16:9'};
 /* traducción + pronunciación (detecta el idioma solo) */
 const trCache={};
@@ -1620,17 +1620,33 @@ function iaFeed(m){
   for(const x of m.v)IA.v.push(x);
   const cap=Math.round(150/hop);if(IA.v.length>cap){const c=IA.v.length-cap;IA.v.splice(0,c);IA.ft0+=c*hop}
 }
+/* anclas automáticas: cada tramo de la canción se alinea con su propio audio, y se guardan para la próxima vez */
+function iaAnchor(v,off){
+  const base=lmap(v)+lofs;let l=v*lsc+off;if(anc.length)l=base+(l-base)*.5;
+  const keep=anc.filter(a=>Math.abs(a.v-v)>10&&((a.v<v)===(a.l<l)));
+  const p=keep.filter(a=>a.v<v).pop(),q=keep.find(a=>a.v>v);
+  const ok=x=>x>.5&&x<2*Math.max(1,lsc,1/lsc);
+  if((p&&!ok((l-p.l)/(v-p.v)))||(q&&!ok((q.l-l)/(q.v-v))))return;
+  anc=keep.concat([{v,l}]).sort((a,b)=>a.v-b.v);
+  if(lofs){IA.setting=1;setLofs(0,false);IA.setting=0}
+  if(curId){lya[curId]=anc.slice();const ks=Object.keys(lya);if(ks.length>120)delete lya[ks[0]];sv('lya',lya)}
+  tick();
+}
 function iaAnalyze(){
   if(!IA.hear)return;
-  const span=IA.v.length*IA.hop;
+  const hop=IA.hop,span=IA.v.length*hop;
   if(!synced||IA.dm==null){IA.msg='Esperando que suene la canción';return iaUI()}
-  if(span<16){IA.msg='Escuchando… '+Math.round(span)+' s';return iaUI()}
-  const r=iaAlign(iaOnset(IA.v,IA.hop),IA.hop,IA.ft0+IA.dm,lines.filter(l=>l.s).map(l=>l.t),lsc,-45,45,.05);
-  if(!r){IA.msg='Escuchando…';return iaUI()}
-  const diff=r.off-lofs,good=r.peak>=4.2&&r.gap>=.6&&(Math.abs(diff)<8||r.peak>=5.2);
-  if(!good){IA.msg=IA.locked?'Alineada ✓':'Escuchando… señal poco clara';return iaUI()}
-  if(!anc.length&&Date.now()-IA.manual>25000&&Math.abs(diff)>.2){IA.setting=1;setLofs(IA.locked?lofs+diff*.6:r.off,false);IA.setting=0;if(!IA.locked)toast('IA: letra alineada con el audio ('+(lofs>0?'+':'')+lofs+' s)')}
-  IA.locked=1;IA.msg='Alineada ✓';iaUI();
+  if(span<14){IA.msg='Escuchando… '+Math.round(span)+' s';return iaUI()}
+  const T=lines.filter(l=>l.s).map(l=>l.t);
+  if(!IA.locked){
+    const R=iaAlign(iaOnset(IA.v,hop),hop,IA.ft0+IA.dm,T,lsc,-45,45,.05);
+    if(!R||!(R.peak>=4.2&&R.gap>=.6)){IA.msg='Escuchando… señal poco clara';return iaUI()}
+    iaAnchor(IA.ft0+IA.dm+span/2,R.off);IA.locked=1;toast('IA: letra alineada con el audio');IA.msg='Alineada ✓';return iaUI();
+  }
+  const st=Math.max(0,IA.v.length-Math.round(40/hop)),V=IA.v.slice(st),m0=IA.ft0+st*hop+IA.dm,vm=m0+V.length*hop/2,cur=lmap(vm)-vm*lsc+lofs;
+  const r=iaAlign(iaOnset(V,hop),hop,m0,T,lsc,cur-14,cur+14,.05);
+  if(r&&r.peak>=2.6&&r.gap>=.4&&Math.abs(r.off-cur)>.12)iaAnchor(vm,r.off);
+  IA.msg='Alineada ✓';iaUI();
 }
 async function iaListen(){
   if(IA.hear)return iaStop();
@@ -1671,11 +1687,13 @@ $('iaPanel').addEventListener('click',e=>e.stopPropagation());
 $('iaOn').onchange=e=>{setSmart(e.target.checked,true);if(!smart&&IA.hear)iaStop();iaFit()};
 $('iaHear').onclick=iaListen;
 document.addEventListener('click',()=>$('iaPanel').classList.remove('open'));
+let iaTried=false;
+document.addEventListener('click',()=>{if(iaTried||IA.hear||!smart||!curId||!synced)return;iaTried=true;iaListen().catch(()=>{})},true);   /* un solo permiso por sesión; a partir de ahí todo es automático */
 const _setLofs=setLofs;setLofs=function(v,say){if(!IA.setting)IA.manual=Date.now();return _setLofs(v,say)};
 iaUI();
 </script>
 <script>
-const APP_VER='2026-10-31-2'; /* sube este valor cada vez que publiques una versión nueva */
+const APP_VER='2026-10-31-3'; /* sube este valor cada vez que publiques una versión nueva */
 (()=>{
   const $=id=>document.getElementById(id);let shown=false;
   async function check(){
