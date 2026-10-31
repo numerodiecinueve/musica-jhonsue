@@ -1767,8 +1767,29 @@ html{-webkit-tap-highlight-color:transparent}body{overscroll-behavior:none}
   .l{padding:8px 10px}
 }
 </style>
+<style>
+/* ===== reproductor móvil estilo Apple: portada grande, controles limpios ===== */
+@media(max-width:900px){
+  #np:not(.video):not(.pm) #cover{border-radius:26px;box-shadow:0 30px 70px -18px rgba(0,0,0,.7)!important}
+  #np .np-meta .tt{font-size:22px;font-weight:700;letter-spacing:-.01em}
+  #np .np-meta .ch{font-size:17px;opacity:.6}
+  #np .pbar,#np .vb{height:5px!important;border-radius:5px!important;background:rgba(255,255,255,.26)!important;overflow:hidden}
+  #np .pbar .pfill,#np .vb .pfill{background:#fff!important;border-radius:5px}
+  #np .tms{font-size:12px;opacity:.6;font-variant-numeric:tabular-nums}
+  #np .btns{justify-content:space-between;align-items:center;gap:0;padding:0 14%}
+  #np .btns button{background:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  #np .btns button::before,#np .nrow .nbtn::before{display:none!important}
+  #np .btns .b-prev svg,#np .btns .b-next svg{width:34px;height:34px;fill:#fff}
+  #np .btns .b-play{width:84px;height:84px}
+  #np .btns .b-play svg{width:58px;height:58px;fill:#fff}
+  #np .vrow{opacity:.8;gap:12px}
+  #np .nrow{display:flex;justify-content:space-between;padding:4px 10px calc(8px + env(safe-area-inset-bottom,0px))}
+  #np .nrow .nbtn{background:none!important;border:0!important;box-shadow:none!important;width:48px;height:48px;opacity:.75}
+  #np .nrow .nbtn.on{opacity:1}
+}
+</style>
 <script>
-const APP_VER='2026-10-31-7'; /* sube este valor cada vez que publiques una versión nueva */
+const APP_VER='2026-10-31-8'; /* sube este valor cada vez que publiques una versión nueva */
 (()=>{
   const $=id=>document.getElementById(id);let shown=false;
   async function check(){
