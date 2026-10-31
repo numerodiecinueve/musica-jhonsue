@@ -442,6 +442,49 @@ body:not(.playing) #bg b,body:not(.playing) #np::before{animation-play-state:pau
  .glass{-webkit-backdrop-filter:blur(16px) saturate(1.6);backdrop-filter:blur(16px) saturate(1.6)}
  #stage::before{filter:blur(24px) saturate(1.6)}
 }
+
+/* ================= v9: Liquid Glass tipo iPhone ================= */
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI Variable Display","Segoe UI",Roboto,sans-serif;letter-spacing:-.011em}
+.glass{background:radial-gradient(130% 150% at 0% 0%,rgba(255,255,255,.24),rgba(255,255,255,0) 56%),linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.03));-webkit-backdrop-filter:blur(34px) saturate(2.2) brightness(1.1);backdrop-filter:blur(34px) saturate(2.2) brightness(1.1);border:0;
+ box-shadow:inset 0 1px 1px rgba(255,255,255,.7),inset 0 -1px 1px rgba(255,255,255,.2),inset 0 0 0 .5px rgba(255,255,255,.3),inset 0 0 26px rgba(255,255,255,.06),0 24px 60px -14px rgba(0,0,0,.55),0 4px 14px rgba(0,0,0,.18)}
+.glass::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;background:conic-gradient(from 200deg,rgba(255,255,255,.9),rgba(255,255,255,.04) 24%,rgba(255,255,255,.42) 50%,rgba(255,255,255,.04) 74%,rgba(255,255,255,.9));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.85}
+#side{border-radius:46px;padding:24px 14px}
+.logo{font-size:24px;padding:6px 14px 18px}
+.nav{border-radius:999px;padding:13px 16px;font-size:15.5px}
+.nav.on{background:linear-gradient(180deg,#ff6a80,#fa243c);box-shadow:inset 0 1px 1px rgba(255,255,255,.75),inset 0 -3px 8px rgba(110,0,20,.28),0 12px 30px -6px rgba(250,36,60,.65)}
+h1{font-size:42px;letter-spacing:-.035em}
+.hero{border-radius:40px;padding:26px 30px}.sf{border-radius:999px;height:56px}.seg{border-radius:999px}.seg button{border-radius:999px}.seg i{border-radius:999px}
+.set{border-radius:36px;padding:22px}.in{border-radius:20px}.pill{border-radius:999px}
+.row{border-radius:26px;padding:9px}.row img{width:58px;height:58px;border-radius:17px}
+.card{width:172px}.card img{width:172px;height:172px;border-radius:34px}
+.tile{height:108px;min-width:168px;border-radius:34px;padding:18px 20px;display:flex;align-items:flex-end;font-size:20px;letter-spacing:-.02em;box-shadow:inset 0 1px 1px rgba(255,255,255,.65),inset 0 -14px 26px rgba(0,0,0,.2),0 16px 34px -10px rgba(0,0,0,.5)}
+.tile::after{inset:0;right:auto;bottom:auto;width:auto;height:auto;border-radius:0;transform:none;box-shadow:none;background:radial-gradient(90% 120% at 100% 0,rgba(255,255,255,.4),transparent 62%)}
+#bar{height:86px;bottom:18px;border-radius:999px;padding:0 30px 0 15px}
+.bc{width:58px;height:58px;border-radius:19px}
+.b-mid{gap:7px}.pr{height:14px}
+#bar .btns .b-play{width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 1px 1px rgba(255,255,255,.6),0 8px 20px rgba(0,0,0,.3)}
+#bar .btns .b-play svg{width:34px;height:34px}
+.pbar,.vb{height:7px;border-radius:99px}.pbar:hover,.vb:hover{height:11px}.pfill{border-radius:99px}
+.pbar .pfill::after{content:'';position:absolute;right:-7px;top:50%;width:14px;height:14px;margin-top:-7px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.4);opacity:0;transition:opacity .2s}.pbar:hover .pfill::after{opacity:1}
+#cover{border-radius:40px}#np:not(.video) #cover{border-radius:42px!important}#np.video #yt{border-radius:36px}
+.nbtn{width:52px;height:52px;box-shadow:inset 0 1px 1px rgba(255,255,255,.5)}
+.chev{border-radius:50%}.l{border-radius:24px}
+#ltools{border-radius:999px}#ltools.open{border-radius:30px}
+#toast,#shBar,#upd{border-radius:999px}#fMenu,#qMenu{border-radius:26px}
+@supports(corner-shape:squircle){#side,.hero,.set,.card img,.row img,.tile,#cover,#np.video #yt,#iaPanel,#fMenu{corner-shape:squircle}}
+/* ---- Sync IA ---- */
+#tBar{display:none}
+#ltools.open #tBar{display:flex;flex-wrap:wrap;justify-content:flex-end;max-width:min(340px,calc(100vw - 150px));opacity:1;overflow:visible;pointer-events:auto;margin-right:4px}
+#tMore{display:grid}
+#tSmart{order:-1;display:flex;align-items:center;gap:8px;height:38px;padding:0 16px 0 13px!important;border-radius:999px!important;font-weight:800}
+#tSmart .dot{width:9px;height:9px;border-radius:50%;background:#8e8e93;transition:background .3s,box-shadow .3s}
+#ltools[data-ia=auto] .dot{background:#64d2ff;box-shadow:0 0 10px #64d2ff}
+#ltools[data-ia=hear] .dot{background:#ff9f0a;box-shadow:0 0 10px #ff9f0a;animation:pulse 1.2s ease-in-out infinite}
+#ltools[data-ia=lock] .dot{background:#30d158;box-shadow:0 0 10px #30d158}
+#iaPanel{display:none;position:absolute;top:58px;right:0;width:min(330px,calc(100vw - 32px));padding:20px;flex-direction:column;gap:14px;font-size:14px;z-index:9}
+#iaPanel.open{display:flex}
+#iaPanel .head{display:flex;justify-content:space-between;align-items:center;font-size:18px;font-weight:800}
+.iar{display:flex;flex-direction:column;gap:2px}.iar span{color:var(--dim);font-size:12px;font-weight:600}.iar b{font-weight:600;line-height:1.3}
 </style>
 </head>
 <body>
@@ -526,7 +569,11 @@ body:not(.playing) #bg b,body:not(.playing) #np::before{animation-play-state:pau
     <button class="chev glass" id="npClose" title="Cerrar"><svg><use href="#i-x"/></svg></button>
     <div class="seg glass" id="modeSeg"><i></i><button class="on" data-m="song">Canción</button><button data-m="cover">Portada</button><button data-m="video">Video</button></div>
   </div>
-  <div id="ltools" class="glass"><div id="tBar"><button id="tFont" title="Fuente de la letra">Aa</button><button id="tTr" title="Traducción y pronunciación">文A</button><button id="tSm" title="Letra más pequeña">A−</button><button id="tLg" title="Letra más grande">A+</button><button id="tFs" title="Letra a pantalla completa">⛶</button><button id="tSync" title="Sincronización: palabra por palabra / línea por línea">Pal</button><button id="tSmart" title="Modo inteligente: ritmo de la canción, retraso del audio y más">✦</button><button id="tCal" title="Calibrar: toca la línea que está sonando">◎</button><button id="tAlt" title="Probar otra versión de la letra">⇄</button><button id="tM" title="Retrasar letra">−</button><button id="tP" title="Adelantar letra">+</button><button id="tRot" title="Girar pantalla o bloquear en vertical">↻</button><button id="tShare" title="Compartir una línea como imagen"><svg style="width:17px;height:17px"><use href="#i-share"/></svg></button></div><button id="tMore" title="Opciones de la letra" aria-expanded="false"><svg><use href="#i-tune"/></svg></button><div id="fMenu" class="glass"></div></div>
+  <div id="ltools" class="glass"><button id="tSmart" title="Sync IA"><i class="dot"></i>IA</button><div id="tBar"><button id="tFont" title="Fuente de la letra">Aa</button><button id="tTr" title="Traducción y pronunciación">文A</button><button id="tSm" title="Letra más pequeña">A−</button><button id="tLg" title="Letra más grande">A+</button><button id="tFs" title="Letra a pantalla completa">⛶</button><button id="tSync" title="Sincronización: palabra por palabra / línea por línea">Pal</button><button id="tCal" title="Calibrar: toca la línea que está sonando">◎</button><button id="tAlt" title="Probar otra versión de la letra">⇄</button><button id="tM" title="Retrasar letra">−</button><button id="tP" title="Adelantar letra">+</button><button id="tRot" title="Girar pantalla o bloquear en vertical">↻</button><button id="tShare" title="Compartir una línea como imagen"><svg style="width:17px;height:17px"><use href="#i-share"/></svg></button></div><button id="tMore" title="Opciones de la letra" aria-expanded="false"><svg><use href="#i-tune"/></svg></button><div id="fMenu" class="glass"></div>
+  <div id="iaPanel" class="glass"><div class="head"><span>✦ Sync IA</span><label class="chk"><input type="checkbox" id="iaOn"></label></div>
+   <div class="iar"><span>Duración</span><b id="iaDur">—</b></div><div class="iar"><span>Retraso del audio</span><b id="iaLat">—</b></div><div class="iar"><span>Escucha</span><b id="iaHearT">Apagada</b></div>
+   <button class="pill glass" id="iaHear">Escuchar con IA</button>
+   <small style="color:var(--dim);line-height:1.4">La IA ajusta la letra a la duración, compensa el retraso del audio y, si la dejas escuchar, la alinea sola con la voz y la verifica mientras suena.</small></div></div>
   <div class="np-left">
     <div id="stage"><div id="cover"></div><div id="eq"><i></i><i></i><i></i><i></i></div><div id="yt"><div id="ytp"></div></div><button id="qBtn" class="glass" title="Calidad">Auto</button><div id="qMenu" class="glass"></div>
       <div id="vov"><div class="vmid"><button id="vBack">−10</button><button class="b-play" id="vPlay"><svg><use href="#i-play"/></svg></button><button id="vFwd">+10</button></div>
@@ -582,7 +629,7 @@ const isFav=id=>fav.some(x=>x.id===id);
 let picking=false,picked=[],coverBars=false,ori=ld('ori',(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<700)?'portrait':'auto'),oriWarned=false,wmode=ld('wmode','word'),lyo=ld('lyo',{}),tRef=0,tAt=0,tLast=-1,rafId=0;
 const LOOK=.22;
 /* modo inteligente */
-let smart=ld('smart',true),lat=0,lyAlts=[],lyAltI=0,calibrating=false,lyLast=null,TEMPO=.27;
+let smart=ld('smart',true),lat=0,lyAlts=[],lyAltI=0,calibrating=false,lyLast=null,TEMPO=.27,lsc=1,lyDur=0;
 const REACT=.2,STALL=1.2;   // REACT: lo que tardas en tocar tras oír la línea · STALL: tope de avance sin lecturas nuevas del reproductor (buffering)
 const effOff=()=>lofs-(smart?lat:0);
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2200)}
@@ -638,7 +685,7 @@ function smoothTime(){
 }
 function syncLyr(rt){
   if(!synced||!lines.length)return;
-  const t=rt+effOff();let lo=0,hi=lines.length-1,i=-1;
+  const t=rt*lsc+effOff();let lo=0,hi=lines.length-1,i=-1;
   while(lo<=hi){const m=(lo+hi)>>1;if(lines[m].t<=t+LOOK){i=m;lo=m+1}else hi=m-1}
   if(i!==active){active=i;highlight()}
   if(i>=0&&wmode==='word'){
@@ -842,8 +889,8 @@ function showLyr(arr,sync){
         else w.textContent=x.s;
       }else w.textContent=x.s;
       d.appendChild(w)}else d.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';
-    d.onclick=()=>{if(picking){togglePick(d);return}if(calibrating&&sync&&x.s){calibrate(x);return}if(sync)player.seekTo(Math.max(0,x.t-effOff()),true)};c.appendChild(d)});
-  pane.scrollTop=0;highlight();applyTr();kickRaf();
+    d.onclick=()=>{if(picking){togglePick(d);return}if(calibrating&&sync&&x.s){calibrate(x);return}if(sync)player.seekTo(Math.max(0,(x.t-effOff())/lsc),true)};c.appendChild(d)});
+  pane.scrollTop=0;highlight();applyTr();kickRaf();typeof iaFit==='function'&&iaFit();
 }
 /* ---------- búsqueda de letra: hace el mayor esfuerzo, en cualquier idioma ---------- */
 const lyNorm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').normalize('NFC').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
@@ -883,7 +930,7 @@ function lyPick(all,T,A,d){
 function setSrc(n){const a=$('lySrc');if(!a)return;if(n==='api'){const u=getLyApi();a.textContent='Letra de '+(u.replace(/^https?:\/\//i,'').split(/[\/?]/)[0]||'tu servidor');a.href=u||'#'}else if(n==='ovh'){a.textContent='Letra de lyrics.ovh';a.href='https://lyrics.ovh'}else{a.textContent='Letra de lrclib.net';a.href='https://lrclib.net'}}
 async function findLyrics(song,art,opt){
   const fresh=!!(opt&&opt.fresh);
-  const my=++lySeq;lofs=lyo[curId]||0;stopPick();lines=[];synced=false;$('lyrics').innerHTML='';$('lprevT').textContent='Letra';setSrc('lrclib');
+  const my=++lySeq;lofs=lyo[curId]||0;lsc=1;lyDur=0;typeof iaReset==='function'&&iaReset();stopPick();lines=[];synced=false;$('lyrics').innerHTML='';$('lprevT').textContent='Letra';setSrc('lrclib');
   lyLast={song,art};lyAlts=[];lyAltI=0;
   const mg=$('msg');mg.onclick=null;mg.classList.remove('retry');
   /* 1) tu servidor (si lo configuraste): letra con tiempos por palabra en milisegundos */
@@ -902,7 +949,7 @@ async function findLyrics(song,art,opt){
     msg('');setSrc('lrclib');
   }
   const lid=curId,lc=lyc[lid];
-  if(lc&&!fresh){setSrc(lc.src==='ovh'?'ovh':'lrclib');return showLyr(lc.sy?parseLrc(lc.s):lc.s.split('\n').map(x=>({s:x})),!!lc.sy)}
+  if(lc&&!fresh){setSrc(lc.src==='ovh'?'ovh':'lrclib');lyDur=lc.d||0;return showLyr(lc.sy?parseLrc(lc.s):lc.s.split('\n').map(x=>({s:x})),!!lc.sy)}
   msg('Buscando letra…');
   let d=0;for(let k=0;k<20&&!(d=ready&&player.getDuration?player.getDuration():0);k++)await new Promise(r=>setTimeout(r,250));
   if(my!==lySeq)return;
@@ -929,7 +976,7 @@ async function findLyrics(song,art,opt){
         const seenT=new Set();
         lyAlts=[pk,...(lyPick.res||[]).filter(x=>x.sy&&x!==pk)].filter(x=>x.sy&&!seenT.has(x.r.syncedLyrics)&&seenT.add(x.r.syncedLyrics)).slice(0,6);lyAltI=0;
         if(d&&pk.dd!=null&&pk.dd>8)toast('Letra aproximada: toca ◎ para calibrarla o ⇄ para otra versión');
-        lycSet(lid,r.syncedLyrics,1,'lrclib');return showLyr(parseLrc(r.syncedLyrics),true)}
+        lyDur=r.duration||0;lycSet(lid,r.syncedLyrics,1,'lrclib',lyDur);return showLyr(parseLrc(r.syncedLyrics),true)}
       lycSet(lid,r.plainLyrics,0,'lrclib');return showLyr(r.plainLyrics.split('\n').map(s=>({s})),false);
     }
     // respaldo: otra fuente (solo texto)
@@ -1166,7 +1213,7 @@ async function applyTr(manual){
 const TM=['off','tr','rm','both'],TL={off:'Letra original',tr:'Con traducción',rm:'Con pronunciación',both:'Pronunciación y traducción'};
 $('tTr').onclick=()=>{tmode=TM[(TM.indexOf(tmode)+1)%4];sv('tmode',tmode);toast(TL[tmode]);applyTr(true)};
 function setLofs(v,say){
-  lofs=Math.round(v*10)/10;
+  lofs=Math.round(v*20)/20;
   if(curId){if(lofs)lyo[curId]=lofs;else delete lyo[curId];const ks=Object.keys(lyo);if(ks.length>120)delete lyo[ks[0]];sv('lyo',lyo)}
   if(say)toast('Letra '+(lofs>0?'+':'')+lofs+' s (se guarda para esta canción)');
   tick();
@@ -1179,7 +1226,7 @@ $('tM').onclick=()=>nudge(-.5);$('tP').onclick=()=>nudge(.5);
 function calibrate(x){
   calibrating=false;$('tCal').classList.remove('on');$('lyrics').classList.remove('cal');
   const rt=ready?smoothTime():0;
-  const o=Math.max(-20,Math.min(20,x.t-rt+REACT+(smart?lat:0)));
+  const o=Math.max(-20,Math.min(20,x.t-rt*lsc+REACT*lsc+(smart?lat:0)));
   setLofs(o,false);toast('Calibrada: '+(lofs>0?'+':'')+lofs+' s para esta canción');
 }
 $('tCal').onclick=()=>{
@@ -1197,7 +1244,7 @@ $('tAlt').onclick=async()=>{
   }
   if(lyAlts.length<2)return toast('No hay otras versiones de esta letra');
   lyAltI=(lyAltI+1)%lyAlts.length;const r=lyAlts[lyAltI].r;
-  lycSet(curId,r.syncedLyrics,1,'lrclib');setLofs(0,false);showLyr(parseLrc(r.syncedLyrics),true);
+  lyDur=r.duration||0;lycSet(curId,r.syncedLyrics,1,'lrclib',lyDur);setLofs(0,false);showLyr(parseLrc(r.syncedLyrics),true);
   toast('Versión '+(lyAltI+1)+' de '+lyAlts.length+(r.duration?' · '+fmt(r.duration):''));
 };
 /* Latencia de salida (p. ej. Bluetooth): el audio se oye un poco después de lo que marca el reproductor. Se descuenta para que la letra coincida con lo que OYES. */
@@ -1315,7 +1362,7 @@ try{const ms=navigator.mediaSession;
 let shuf=ld('shuf',false),rep=ld('rep','off'),nxt=null,played=new Set(),hstk=[],lastQ=null;
 let xfOn=ld('xf',false),xfS=+ld('xfs',4)||4,xf=null,xfTimer=0,acv=ld('acv',true),lz=+ld('lz',1)||1,lfs=false;
 const lyc=ld('lyc',{});
-function lycSet(id,t,sy,src){lyc[id]={s:t,sy:sy?1:0,src:src||'',t:Date.now()};const ks=Object.keys(lyc);if(ks.length>80)ks.sort((a,b)=>lyc[a].t-lyc[b].t).slice(0,ks.length-80).forEach(k=>delete lyc[k]);sv('lyc',lyc)}
+function lycSet(id,t,sy,src,dur){lyc[id]={s:t,sy:sy?1:0,src:src||'',d:dur||0,t:Date.now()};const ks=Object.keys(lyc);if(ks.length>80)ks.sort((a,b)=>lyc[a].t-lyc[b].t).slice(0,ks.length-80).forEach(k=>delete lyc[k]);sv('lyc',lyc)}
 
 /* aleatorio y repetir */
 function pickNext(){
@@ -1502,7 +1549,128 @@ document.addEventListener('visibilitychange',()=>{document.body.classList.toggle
 
 </script>
 <script>
-const APP_VER='2026-10-29-6'; /* sube este valor cada vez que publiques una versión nueva */
+/* ================= Sync IA: evalúa el audio y mantiene la letra sincronizada sola ================= */
+const IA={hear:0,v:[],dm:null,dn:0,ft0:0,hop:.0107,locked:0,manual:0,msg:'',dur:''};
+const IA_VAR=/sped\s*-?up|speed\s*-?up|nightcore|slowed|daycore|acelerad|ralentizad/i;
+/* fuerza de ataque (z) de la energía en la banda de la voz */
+function iaOnset(v,hop){const n=v.length,E=new Float32Array(n),P=new Float64Array(n+1),O=new Float32Array(n),W=Math.max(3,Math.round(.1/hop));
+  for(let i=0;i<n;i++){E[i]=Math.log(v[i]+1e-5);P[i+1]=P[i]+E[i]}
+  let mu=0,sd=0;for(let i=1;i<n;i++){const j=Math.max(0,i-W);O[i]=Math.max(0,E[i]-(P[i]-P[j])/(i-j));mu+=O[i]}
+  mu/=n;for(let i=0;i<n;i++)sd+=(O[i]-mu)**2;sd=Math.sqrt(sd/n)||1;
+  for(let i=0;i<n;i++)O[i]=(O[i]-mu)/sd;return O}
+/* busca el desfase de letra (s) donde más inicios de línea coinciden con ataques de voz; peak≈z, gap=ventaja sobre el 2.º mejor */
+function iaAlign(O,hop,m0,T,sc,lo,hi,st){
+  const N=O.length;if(N<200||T.length<8)return null;
+  const a=Math.round(.06/hop),b=Math.round(.12/hop),M=new Float32Array(N);
+  for(let k=0;k<N;k++){let x=0;for(let j=Math.max(0,k-a);j<=Math.min(N-1,k+b);j++)if(O[j]>x)x=O[j];M[k]=x}
+  let mu=0,sd=0;for(let k=0;k<N;k++)mu+=M[k];mu/=N;for(let k=0;k<N;k++)sd+=(M[k]-mu)**2;sd=Math.sqrt(sd/N)||1;
+  const C=Math.round((hi-lo)/st)+1,S=new Float32Array(C);let bi=0;
+  for(let c=0;c<C;c++){const off=lo+c*st;let s=0,n=0;
+    for(const t of T){const k=Math.round(((t-off)/sc-m0)/hop);if(k>=0&&k<N){s+=(M[k]-mu)/sd;n++}}
+    S[c]=n>=8?s/Math.sqrt(n):-9;if(S[c]>S[bi])bi=c}
+  if(S[bi]<=-9)return null;
+  let sec=-9;const g=Math.round(.6/st);for(let c=0;c<C;c++)if(Math.abs(c-bi)>g&&S[c]>sec)sec=S[c];
+  const y0=S[Math.max(0,bi-1)],y1=S[bi],y2=S[Math.min(C-1,bi+1)],dn=y0-2*y1+y2,fr=dn?.5*(y0-y2)/dn:0;
+  return {off:lo+(bi+Math.max(-.5,Math.min(.5,fr)))*st,peak:S[bi],gap:S[bi]-sec};
+}
+const IA_WK=`class F extends AudioWorkletProcessor{constructor(){super();const r=sampleRate;this.H=Math.round(r*.0107);this.k=[1-Math.exp(-6.2832*3400/r),1-Math.exp(-6.2832*300/r)];this.a=[0,0];this.b=[0,0];this.c=0;this.s=0;this.o=[];this.t0=0}
+process(i){const ch=i[0];if(!ch||!ch[0])return true;const L=ch[0],R=ch[1]||L;
+for(let j=0;j<L.length;j++){const x=(L[j]+R[j])*.5;
+this.a[0]+=this.k[0]*(x-this.a[0]);this.a[1]+=this.k[0]*(this.a[0]-this.a[1]);this.b[0]+=this.k[1]*(x-this.b[0]);this.b[1]+=this.k[1]*(this.b[0]-this.b[1]);
+const y=this.a[1]-this.b[1];this.s+=y*y;
+if(++this.c>=this.H){if(!this.o.length)this.t0=currentTime+(j+1)/sampleRate;this.o.push(Math.sqrt(this.s/this.c));this.s=0;this.c=0;
+if(this.o.length>=16){this.port.postMessage({t0:this.t0,hop:this.H/sampleRate,v:new Float32Array(this.o)});this.o=[]}}}
+return true}}registerProcessor('ia-feat',F);`;
+
+/* 1) ajuste automático a la duración */
+function iaFit(){
+  lsc=1;
+  if(!smart){IA.dur='IA apagada';return iaUI()}
+  if(!lines.length){IA.dur='Esperando la letra';return iaUI()}
+  if(!synced){IA.dur='Letra sin tiempos: no se puede sincronizar';return iaUI()}
+  const D=ready&&player.getDuration?player.getDuration():0;
+  if(!D){IA.dur='Midiendo duración…';IA.try=(IA.try||0)+1;if(IA.try<14)setTimeout(()=>{if(synced&&lines.length)iaFit()},700);return iaUI()}
+  IA.try=0;
+  const L=lyDur||0,title=(queue[qi]||{}).title||'',last=lines.reduce((a,l)=>Math.max(a,l.t),0);
+  if(L){const d=D-L,ad=Math.abs(d);
+    if(ad<=2.5)IA.dur='Coincide con el audio (±'+ad.toFixed(1)+' s)';
+    else if(IA_VAR.test(title)&&D/L>.5&&D/L<2){lsc=L/D;IA.dur='Ajustada al audio: ×'+lsc.toFixed(2)+(lsc>1?' (versión acelerada)':' (versión lenta)');toast('IA: letra ajustada a la duración ('+fmt(D)+')')}
+    else IA.dur='Duración distinta ('+(d>0?'+':'−')+Math.round(ad)+' s): la IA la alinea al escuchar'}
+  else IA.dur=last>D+3?'La letra es más larga que el audio':'Letra de otra fuente (sin dato de duración)';
+  iaUI();tick();
+}
+/* 2) escucha del audio de la pestaña: alinea la letra con la voz y la verifica sin parar */
+function iaFlush(){IA.v=[];IA.dm=null;IA.dn=0}
+function iaReset(){iaFlush();IA.locked=0;IA.msg='';IA.dur='';iaUI()}
+function iaFeed(m){
+  if(!IA.hear)return;
+  const hop=m.hop;IA.hop=hop;
+  const ok=ready&&synced&&lines.length&&player.getPlayerState()===1&&((player.getPlaybackRate&&player.getPlaybackRate())||1)===1&&!seeking;
+  if(!ok){iaFlush();return}
+  const d=smoothTime()-IA.ctx.currentTime;
+  if(IA.dm==null||Math.abs(d-IA.dm)>.6){iaFlush();IA.dm=d;IA.dn=1;IA.ft0=m.t0}
+  else{IA.dn++;IA.dm+=(d-IA.dm)/Math.min(IA.dn,60)}
+  if(!IA.v.length)IA.ft0=m.t0;
+  else if(Math.abs(m.t0-(IA.ft0+IA.v.length*hop))>hop*3){const x=IA.dm;iaFlush();IA.dm=x;IA.dn=1;IA.ft0=m.t0}
+  for(const x of m.v)IA.v.push(x);
+  const cap=Math.round(150/hop);if(IA.v.length>cap){const c=IA.v.length-cap;IA.v.splice(0,c);IA.ft0+=c*hop}
+}
+function iaAnalyze(){
+  if(!IA.hear)return;
+  const span=IA.v.length*IA.hop;
+  if(!synced||IA.dm==null){IA.msg='Esperando que suene la canción';return iaUI()}
+  if(span<16){IA.msg='Escuchando… '+Math.round(span)+' s';return iaUI()}
+  const r=iaAlign(iaOnset(IA.v,IA.hop),IA.hop,IA.ft0+IA.dm,lines.filter(l=>l.s).map(l=>l.t),lsc,-45,45,.05);
+  if(!r){IA.msg='Escuchando…';return iaUI()}
+  const diff=r.off-lofs,good=r.peak>=4.2&&r.gap>=.6&&(Math.abs(diff)<8||r.peak>=5.2);
+  if(!good){IA.msg=IA.locked?'Alineada ✓':'Escuchando… señal poco clara';return iaUI()}
+  if(Date.now()-IA.manual>25000&&Math.abs(diff)>.2){IA.setting=1;setLofs(IA.locked?lofs+diff*.6:r.off,false);IA.setting=0;if(!IA.locked)toast('IA: letra alineada con el audio ('+(lofs>0?'+':'')+lofs+' s)')}
+  IA.locked=1;IA.msg='Alineada ✓';iaUI();
+}
+async function iaListen(){
+  if(IA.hear)return iaStop();
+  const md=navigator.mediaDevices;
+  if(!md||!md.getDisplayMedia||!window.AudioWorkletNode)return toast('Este navegador no permite que la IA escuche el audio');
+  let st;
+  try{st=await md.getDisplayMedia({video:{frameRate:1,width:16,height:16},audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},preferCurrentTab:true,selfBrowserSurface:'include',systemAudio:'include'})}
+  catch(e){return toast(e&&e.name==='NotAllowedError'?'Permiso cancelado':'No se pudo escuchar el audio')}
+  const at=st.getAudioTracks();
+  if(!at.length){st.getTracks().forEach(t=>t.stop());return toast('Falta el audio: elige “Esta pestaña” y activa “Compartir audio”')}
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext,ctx=new AC(),url=URL.createObjectURL(new Blob([IA_WK],{type:'text/javascript'}));
+    await ctx.audioWorklet.addModule(url);URL.revokeObjectURL(url);
+    const src=ctx.createMediaStreamSource(new MediaStream(at)),node=new AudioWorkletNode(ctx,'ia-feat',{outputChannelCount:[1]}),mute=ctx.createGain();
+    mute.gain.value=0;src.connect(node);node.connect(mute);mute.connect(ctx.destination);
+    if(ctx.state==='suspended')await ctx.resume();
+    node.port.onmessage=e=>iaFeed(e.data);
+    Object.assign(IA,{hear:1,ctx,node,st,tm:setInterval(iaAnalyze,2500),msg:'Escuchando…'});iaFlush();
+    st.getTracks().forEach(t=>t.onended=()=>iaStop());
+    toast('La IA está escuchando y sincronizando');iaUI();
+  }catch(e){st.getTracks().forEach(t=>t.stop());toast('No se pudo iniciar la escucha')}
+}
+function iaStop(){
+  clearInterval(IA.tm);try{IA.st&&IA.st.getTracks().forEach(t=>{t.onended=null;t.stop()})}catch(e){}try{IA.ctx&&IA.ctx.close()}catch(e){}
+  IA.hear=0;IA.ctx=IA.node=IA.st=null;IA.locked=0;IA.msg='';iaFlush();iaUI();
+}
+/* 3) panel y pastilla */
+function iaUI(){
+  const L=$('ltools');if(!L)return;
+  L.dataset.ia=!smart?'off':IA.hear?(IA.locked?'lock':'hear'):'auto';
+  $('iaOn').checked=smart;$('iaDur').textContent=IA.dur||'—';
+  $('iaLat').textContent=lat?lat.toFixed(2)+' s compensados':'Sin retraso detectado';
+  $('iaHearT').textContent=IA.hear?(IA.msg||'Escuchando…'):'Apagada';
+  $('iaHear').textContent=IA.hear?'Dejar de escuchar':'Escuchar con IA';
+}
+$('tSmart').onclick=e=>{e.stopPropagation();iaUI();$('iaPanel').classList.toggle('open');$('fMenu').classList.remove('open')};
+$('iaPanel').addEventListener('click',e=>e.stopPropagation());
+$('iaOn').onchange=e=>{setSmart(e.target.checked,true);if(!smart&&IA.hear)iaStop();iaFit()};
+$('iaHear').onclick=iaListen;
+document.addEventListener('click',()=>$('iaPanel').classList.remove('open'));
+const _setLofs=setLofs;setLofs=function(v,say){if(!IA.setting)IA.manual=Date.now();return _setLofs(v,say)};
+iaUI();
+</script>
+<script>
+const APP_VER='2026-10-31-1'; /* sube este valor cada vez que publiques una versión nueva */
 (()=>{
   const $=id=>document.getElementById(id);let shown=false;
   async function check(){
