@@ -1688,12 +1688,72 @@ $('iaOn').onchange=e=>{setSmart(e.target.checked,true);if(!smart&&IA.hear)iaStop
 $('iaHear').onclick=iaListen;
 document.addEventListener('click',()=>$('iaPanel').classList.remove('open'));
 let iaTried=false;
-document.addEventListener('click',()=>{if(iaTried||IA.hear||!smart||!curId||!synced)return;iaTried=true;iaListen().catch(()=>{})},true);   /* un solo permiso por sesión; a partir de ahí todo es automático */
+document.addEventListener('click',()=>{if(iaTried||IA.hear||!smart||!curId||!synced||player===LP)return;iaTried=true;iaListen().catch(()=>{})},true);   /* un solo permiso por sesión; a partir de ahí todo es automático */
 const _setLofs=setLofs;setLofs=function(v,say){if(!IA.setting)IA.manual=Date.now();return _setLofs(v,say)};
 iaUI();
 </script>
+<style>
+#locDock{position:fixed;left:14px;bottom:14px;z-index:60;display:flex;gap:8px}
+#locDock button{font:600 13px system-ui;color:#fff;background:rgba(30,30,40,.72);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:9px 15px;cursor:pointer;backdrop-filter:blur(14px)}
+#locDock #eqBtn{display:none}body.local #locDock #eqBtn{display:block}
+</style>
+<div id="locDock"><button id="locBtn" title="Reproducir tus archivos FLAC, WAV, MP3…">♫ Mis archivos</button><button id="eqBtn" title="Ecualizador"></button></div>
+<input type="file" id="locIn" accept="audio/*,.flac,.wav,.m4a,.mp3,.ogg,.opus,.aac" multiple hidden>
 <script>
-const APP_VER='2026-10-31-3'; /* sube este valor cada vez que publiques una versión nueva */
+/* ===== Modo archivos locales: audio sin pérdida con el mismo motor de letras ===== */
+const LP=(()=>{
+  const a=new Audio();a.preload='auto';let ctx,fl=[],pi=0,url='';
+  const P=[['Plano',[0,0,0,0,0]],['Graves+',[5,3,0,0,1]],['Voz',[-2,-1,2,3,1]],['Brillo',[0,0,1,3,5]]];
+  const chain=()=>{if(ctx)return;const AC=window.AudioContext||window.webkitAudioContext;ctx=new AC({latencyHint:'playback'});let n=ctx.createMediaElementSource(a);
+    [60,230,910,3600,14000].forEach(f=>{const b=ctx.createBiquadFilter();b.type='peaking';b.frequency.value=f;b.Q.value=1;n.connect(b);n=b;fl.push(b)});n.connect(ctx.destination);eq(pi)};
+  const eq=i=>{pi=i%P.length;fl.forEach((b,k)=>b.gain.value=P[pi][1][k]);$('eqBtn').textContent='EQ: '+P[pi][0]};
+  const st=d=>onState({data:d,target:LP});
+  a.onplaying=()=>st(1);a.onpause=()=>{if(!a.ended)st(2)};a.onwaiting=()=>st(3);a.onended=()=>st(0);
+  return {a,eq:()=>eq(pi+1),
+    load(f){chain();if(ctx.state==='suspended')ctx.resume();if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(f);a.src=url;a.volume=curVol/100;
+      return new Promise(r=>{const t=setTimeout(r,4000);a.onloadedmetadata=()=>{clearTimeout(t);r()};a.play().catch(()=>{})})},
+    getPlayerState:()=>a.ended?0:a.paused?2:a.readyState<3?3:1,getCurrentTime:()=>a.currentTime||0,getDuration:()=>a.duration||0,
+    seekTo:t=>{a.currentTime=t},playVideo:()=>{ctx&&ctx.resume();a.play().catch(()=>{})},pauseVideo:()=>a.pause(),setVolume:v=>{a.volume=Math.max(0,Math.min(1,v/100))},getPlaybackRate:()=>a.playbackRate||1};
+})();
+const _playTrack=playTrack;
+playTrack=async function(i,opt){
+  const it=queue[i];
+  if(!it||!it.loc){if(player===LP){LP.a.pause();player=pA;document.body.classList.remove('local')}return _playTrack(i,opt)}
+  if(player!==LP){try{pA.pauseVideo()}catch(e){}player=LP}
+  document.body.classList.add('local');ready=true;wantPlay=true;qi=i;curId=it.id;
+  const m=it.title.match(/^(.*?)\s+[-–]\s+(.*)$/),art=m?m[1]:'',song=m?m[2]:it.title;
+  $$('.mTitle').forEach(e=>e.textContent=song);$$('.mArtist').forEach(e=>e.textContent=art);document.title=song+(art?' · '+art:'');
+  document.documentElement.style.setProperty('--art','none');document.body.classList.add('has');rows($('qlist'),queue);
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:song,artist:art})}catch(e){}
+  if(!opened){opened=true;openNP()}
+  await LP.load(it.loc);findLyrics(song,art);
+};
+$('locBtn').onclick=()=>$('locIn').click();$('eqBtn').onclick=()=>LP.eq();
+$('locIn').onchange=e=>{
+  const fs=[...e.target.files].sort((x,y)=>x.name.localeCompare(y.name,undefined,{numeric:true}));if(!fs.length)return;
+  queue=fs.map(f=>({id:'loc:'+f.name+f.size,title:f.name.replace(/\.[^.]+$/,'').replace(/_/g,' '),author:'',loc:f}));
+  e.target.value='';playTrack(0);
+};
+</script>
+<style>
+@keyframes glow{0%,100%{box-shadow:0 44px 90px -16px rgba(0,0,0,.7),0 0 40px rgba(255,255,255,.06),inset 0 0 0 1px rgba(255,255,255,.22)}50%{box-shadow:0 52px 100px -14px rgba(0,0,0,.75),0 0 90px rgba(255,255,255,.2),inset 0 0 0 1px rgba(255,255,255,.34)}}
+#np:not(.video) #cover{will-change:transform;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+body:not(.playing) #np:not(.video) #cover{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(.88)}
+body.playing #np:not(.video):not(.pm) #cover{animation:glow 4.5s ease-in-out infinite}
+</style>
+<script>
+/* ===== portada: HD, movimiento y profundidad ===== */
+document.body.classList.add('acv');
+const hdArt=id=>{const im=new Image();im.onload=()=>{if(im.naturalWidth>400&&curId===id)document.documentElement.style.setProperty('--art',`url(${im.src})`)};im.src='https://img.youtube.com/vi/'+id+'/maxresdefault.jpg'};
+const _pt2=playTrack;
+playTrack=function(i,opt){const it=queue[i];if(it&&!it.loc)hdArt(it.id);return _pt2(i,opt)};
+(()=>{const c=$('cover');if(!c)return;
+  c.addEventListener('pointermove',e=>{const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;c.style.setProperty('--rx',(-y*10).toFixed(1)+'deg');c.style.setProperty('--ry',(x*12).toFixed(1)+'deg')});
+  c.addEventListener('pointerleave',()=>{c.style.setProperty('--rx','0deg');c.style.setProperty('--ry','0deg')});
+})();
+</script>
+<script>
+const APP_VER='2026-10-31-5'; /* sube este valor cada vez que publiques una versión nueva */
 (()=>{
   const $=id=>document.getElementById(id);let shown=false;
   async function check(){
