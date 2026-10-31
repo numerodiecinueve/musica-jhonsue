@@ -140,6 +140,7 @@ body:not(.playing) #cover{transform:scale(.88)}
 #lyrics{padding:28vh 0}
 .msg{position:absolute;inset:0;place-items:center;text-align:center;color:var(--dim);font-size:17px;padding:30px}
 .pane.t-lyr .msg.on{display:grid}
+.video .l{filter:blur(calc(var(--d,3)*.22px));opacity:calc(1 - var(--d,3)*.07)}
 .l{font-size:calc(clamp(22px,2.6vw,34px)*var(--lz,1));font-weight:700;line-height:1.25;padding:10px 14px;margin:2px -14px;border-radius:14px;color:rgba(255,255,255,.5);cursor:pointer;filter:blur(calc(var(--d,3)*.55px));opacity:calc(1 - var(--d,3)*.13);transform:scale(.96);transform-origin:left;transition:filter .5s,opacity .5s,transform .5s cubic-bezier(.2,.8,.2,1),background .2s}
 .l:hover{background:rgba(255,255,255,.1)}
 .l.on{color:#fff;transform:scale(1.04)}
@@ -629,7 +630,9 @@ const isFav=id=>fav.some(x=>x.id===id);
 let picking=false,picked=[],coverBars=false,ori=ld('ori',(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<700)?'portrait':'auto'),oriWarned=false,wmode=ld('wmode','word'),lyo=ld('lyo',{}),tRef=0,tAt=0,tLast=-1,rafId=0;
 const LOOK=.22;
 /* modo inteligente */
-let smart=ld('smart',true),lat=0,lyAlts=[],lyAltI=0,calibrating=false,lyLast=null,TEMPO=.27,lsc=1,lyDur=0;
+let smart=ld('smart',true),lat=0,lyAlts=[],lyAltI=0,calibrating=false,lyLast=null,TEMPO=.27,lsc=1,lyDur=0,anc=[];const lya=ld('lya',{});
+const lmap=v=>{const a=anc,n=a.length-1;if(n<0)return v*lsc;if(v<=a[0].v)return a[0].l+v-a[0].v;if(v>=a[n].v)return a[n].l+v-a[n].v;let i=0;while(a[i+1].v<v)i++;return a[i].l+(v-a[i].v)*(a[i+1].l-a[i].l)/(a[i+1].v-a[i].v)};
+const linv=t=>{const a=anc,n=a.length-1;if(n<0)return t/lsc;if(t<=a[0].l)return a[0].v+t-a[0].l;if(t>=a[n].l)return a[n].v+t-a[n].l;let i=0;while(a[i+1].l<t)i++;return a[i].v+(t-a[i].l)*(a[i+1].v-a[i].v)/(a[i+1].l-a[i].l)};
 const REACT=.2,STALL=1.2;   // REACT: lo que tardas en tocar tras oír la línea · STALL: tope de avance sin lecturas nuevas del reproductor (buffering)
 const effOff=()=>lofs-(smart?lat:0);
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2200)}
@@ -672,20 +675,19 @@ function onState(e){
 /* ---------- seguimiento de la letra: tiempo suavizado + animación fluida ---------- */
 function smoothTime(){
   if(!ready)return 0;
-  const st=player.getPlayerState(),raw=player.getCurrentTime(),now=performance.now();
-  if(st!==1){tRef=raw;tAt=now;tLast=raw;return raw}
+  const st=player.getPlayerState(),raw=player.getCurrentTime(),now=performance.now(),rate=(player.getPlaybackRate&&player.getPlaybackRate())||1;
+  if(st!==1){tRef=raw;tAt=now;tLast=raw;return raw}   /* pausa/buffering: el tiempo se congela */
   if(raw!==tLast){
-    tLast=raw;const est=tRef+(now-tAt)/1000;
-    if(Math.abs(raw-est)>.6||!tAt){tRef=raw}else tRef=est+(raw-est)*.5;
+    const est=tRef+(now-tAt)/1000*rate,err=raw-est;tLast=raw;
+    if(!tAt||Math.abs(err)>.35)tRef=raw;else tRef=est+err*.25;   /* salto (seek) = ajuste inmediato; si no, corrección suave sin tirones */
     tAt=now;
   }
-  /* si el reproductor deja de dar lecturas nuevas (se quedó cargando) no seguimos adelantando la letra por nuestra cuenta */
   const adv=(now-tAt)/1000;
-  return tRef+(smart?Math.min(adv,STALL):adv)*((player.getPlaybackRate&&player.getPlaybackRate())||1);
+  return tRef+(smart?Math.min(adv,STALL):adv)*rate;
 }
 function syncLyr(rt){
   if(!synced||!lines.length)return;
-  const t=rt*lsc+effOff();let lo=0,hi=lines.length-1,i=-1;
+  const t=lmap(rt)+effOff();let lo=0,hi=lines.length-1,i=-1;
   while(lo<=hi){const m=(lo+hi)>>1;if(lines[m].t<=t+LOOK){i=m;lo=m+1}else hi=m-1}
   if(i!==active){active=i;highlight()}
   if(i>=0&&wmode==='word'){
@@ -889,7 +891,7 @@ function showLyr(arr,sync){
         else w.textContent=x.s;
       }else w.textContent=x.s;
       d.appendChild(w)}else d.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';
-    d.onclick=()=>{if(picking){togglePick(d);return}if(calibrating&&sync&&x.s){calibrate(x);return}if(sync)player.seekTo(Math.max(0,(x.t-effOff())/lsc),true)};c.appendChild(d)});
+    d.onclick=()=>{if(picking){togglePick(d);return}if(calibrating&&sync&&x.s){calibrate(x);return}if(sync)player.seekTo(Math.max(0,linv(x.t-effOff())),true)};c.appendChild(d)});
   pane.scrollTop=0;highlight();applyTr();kickRaf();typeof iaFit==='function'&&iaFit();
 }
 /* ---------- búsqueda de letra: hace el mayor esfuerzo, en cualquier idioma ---------- */
@@ -930,7 +932,7 @@ function lyPick(all,T,A,d){
 function setSrc(n){const a=$('lySrc');if(!a)return;if(n==='api'){const u=getLyApi();a.textContent='Letra de '+(u.replace(/^https?:\/\//i,'').split(/[\/?]/)[0]||'tu servidor');a.href=u||'#'}else if(n==='ovh'){a.textContent='Letra de lyrics.ovh';a.href='https://lyrics.ovh'}else{a.textContent='Letra de lrclib.net';a.href='https://lrclib.net'}}
 async function findLyrics(song,art,opt){
   const fresh=!!(opt&&opt.fresh);
-  const my=++lySeq;lofs=lyo[curId]||0;lsc=1;lyDur=0;typeof iaReset==='function'&&iaReset();stopPick();lines=[];synced=false;$('lyrics').innerHTML='';$('lprevT').textContent='Letra';setSrc('lrclib');
+  const my=++lySeq;lofs=lyo[curId]||0;lsc=1;lyDur=0;anc=(lya[curId]||[]).slice();typeof iaReset==='function'&&iaReset();stopPick();lines=[];synced=false;$('lyrics').innerHTML='';$('lprevT').textContent='Letra';setSrc('lrclib');
   lyLast={song,art};lyAlts=[];lyAltI=0;
   const mg=$('msg');mg.onclick=null;mg.classList.remove('retry');
   /* 1) tu servidor (si lo configuraste): letra con tiempos por palabra en milisegundos */
@@ -1225,14 +1227,17 @@ $('tM').onclick=()=>nudge(-.5);$('tP').onclick=()=>nudge(.5);
 /* Calibrar: tocas la línea que estás oyendo y la app calcula sola el desfase (descontando lo que tardas en tocar) */
 function calibrate(x){
   calibrating=false;$('tCal').classList.remove('on');$('lyrics').classList.remove('cal');
-  const rt=ready?smoothTime():0;
-  const o=Math.max(-20,Math.min(20,x.t-rt*lsc+REACT*lsc+(smart?lat:0)));
-  setLofs(o,false);toast('Calibrada: '+(lofs>0?'+':'')+lofs+' s para esta canción');
+  const rt=ready?smoothTime():0,v=Math.max(0,rt-REACT),l=x.t+(smart?lat:0);
+  /* cada toque fija un punto video↔letra; con varios puntos la letra se ajusta por tramos (intros largas, cortes, ediciones del video) */
+  anc=anc.filter(a=>Math.abs(a.v-v)>3&&((a.v<v)===(a.l<l)));anc.push({v,l});anc.sort((a,b)=>a.v-b.v);
+  if(curId){lya[curId]=anc.slice();const ks=Object.keys(lya);if(ks.length>120)delete lya[ks[0]];sv('lya',lya)}
+  setLofs(0,false);toast('Punto '+anc.length+' guardado · repite en otra parte de la canción para afinar');
 }
+$('tCal').oncontextmenu=e=>{e.preventDefault();anc=[];if(curId){delete lya[curId];sv('lya',lya)}setLofs(0,false);toast('Calibración borrada (mantén pulsado Calibrar)')};
 $('tCal').onclick=()=>{
   if(!synced||!lines.length)return toast('Aún no hay letra sincronizada para calibrar');
   calibrating=!calibrating;$('tCal').classList.toggle('on',calibrating);$('lyrics').classList.toggle('cal',calibrating);
-  toast(calibrating?'Toca la línea que está sonando ahora':'Calibración cancelada');
+  toast(calibrating?'Toca la línea que suena ahora (puedes repetirlo en otro momento)':'Calibración cancelada');
 };
 /* Otra versión: algunas canciones tienen varias letras sincronizadas (ediciones distintas); pasa a la siguiente */
 $('tAlt').onclick=async()=>{
@@ -1624,7 +1629,7 @@ function iaAnalyze(){
   if(!r){IA.msg='Escuchando…';return iaUI()}
   const diff=r.off-lofs,good=r.peak>=4.2&&r.gap>=.6&&(Math.abs(diff)<8||r.peak>=5.2);
   if(!good){IA.msg=IA.locked?'Alineada ✓':'Escuchando… señal poco clara';return iaUI()}
-  if(Date.now()-IA.manual>25000&&Math.abs(diff)>.2){IA.setting=1;setLofs(IA.locked?lofs+diff*.6:r.off,false);IA.setting=0;if(!IA.locked)toast('IA: letra alineada con el audio ('+(lofs>0?'+':'')+lofs+' s)')}
+  if(!anc.length&&Date.now()-IA.manual>25000&&Math.abs(diff)>.2){IA.setting=1;setLofs(IA.locked?lofs+diff*.6:r.off,false);IA.setting=0;if(!IA.locked)toast('IA: letra alineada con el audio ('+(lofs>0?'+':'')+lofs+' s)')}
   IA.locked=1;IA.msg='Alineada ✓';iaUI();
 }
 async function iaListen(){
@@ -1670,7 +1675,7 @@ const _setLofs=setLofs;setLofs=function(v,say){if(!IA.setting)IA.manual=Date.now
 iaUI();
 </script>
 <script>
-const APP_VER='2026-10-31-1'; /* sube este valor cada vez que publiques una versión nueva */
+const APP_VER='2026-10-31-2'; /* sube este valor cada vez que publiques una versión nueva */
 (()=>{
   const $=id=>document.getElementById(id);let shown=false;
   async function check(){
